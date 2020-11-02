@@ -1,0 +1,72 @@
+\documentclass[a4paper, 12pt]{article}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\setlist[enumerate]{label*=\arabic*.}
+\def\code#1{\texttt{#1}}
+\begin{document}
+
+\title{\vspace{4.0cm}Applied GPU Programming - Assignment 1\\
+\large DD2360 HT20}
+\author{Pontus Asp}
+\date{\today}
+\maketitle
+\thispagestyle{empty}
+\pagenumbering{roman}
+\newpage
+
+\tableofcontents
+\newpage
+
+\clearpage
+\pagenumbering{arabic}
+
+% Write here ->
+\section{Exercise 1}
+\begin{enumerate}
+	% Why GPUs emerged as suitable hardware for computer graphics (e.g. games)?
+	\item GPUs emerged as suitable hardware for computer graphics because computer graphics needs to calculate a lot of pixels. Most of the time the pixels can be independently calculated from each other and therefore are also susceptible to parallelization. The nature of GPUs are that they work great with calculating highly parallelized single instructions on multiple data (SIMD), like pixels in an image and make a perfect fit for this application.
+	
+	% Why do we talk about throughput-oriented architecture when we talk about GPUs?
+	\item When talking about GPUs we talk about throughput-oriented architecture because that is the type of architecture that the GPUs use. It is thanks to this architecture that GPUs are highly efficient at handling SIMD operations.
+	
+	% List the main differences between GPUs and CPUs in terms of architecture.
+	\item The main differences in the architecture between CPUs and GPUs are that the GPUs have many more computational units than a CPU. The GPUs architecture is made to maximize the amount (thoughput) of calculations per unit of time when the calculations are independent and has the same instructions but on different data. While the architecture of the CPU is better at handling instructions with less parallelization.
+	
+	% Use the Internet to find out and list the number of SMs, the number of cores per SM, the clock frequency, and the size of the memory of the NVIDIA GPU that you plan to use during the course. It might be the GPU of your laptop/workstation, or the GPUs on Tegner (Links to an external site.) (NVIDIA Quadro K420 or NVIDIA Tesla K80). Please, make sure that you mention the specific model as well.
+	\item During this course I plan to use my own GPU, the NVIDIA GeForce GTX 1070. \textbf{[SPECIFY SPECIFIC DETAILS TO MY GPU AND MAKER HERE]}
+	
+	% The new Nvidia GPUs (Volta, Turing, and Ampere) introduce two new kinds of cores, namely the Tensor and Ray Tracing cores.
+	\item Tensor and Ray tracing cores.
+	\begin{enumerate}
+		% Which operation does the Tensor core support in one clock cycle?
+		\item The Tensor core supports doing one multiply-and-accumulate on a 4x4 dimensional matrix per clock cycle.
+		
+		% What is the precision supported by Tensor cores?
+		\item The Tensor Cores supports both taking input and matrix multiplication calculations in half floating-point precision but the accumulation uses single floating-point precision. How precise these precisions are, is decided in the IEEE 754 standard.
+		
+		% Why do you think that Tensor Cores were introduced in the new GPUs? For graphics or other applications?
+		\item I think tensor cores were introduced in new GPUs mainly for the increasing demand of machine learning and their heavy use of matrix multiplication operations.
+		
+		% Check the Google TPU (also an accelerator) characteristic. What are the differences between GPUs with Tensor cores and TPUs?
+		
+		% (Section 4) Without sufficient operational intensity, a program is memory bandwidth-bound and lives under the slanted part of the roofline.
+		
+		% TPUs have better response-time (better at inference), while GPUs/CPUs typically have larger throughput, but does this apply to tensor cores?
+		\item The biggest difference between the two is response-time. TPUs have a better response-time while GPUs (also GPUs with Tensor cores) have better throughput.
+		
+		% Which operation does the Nvidia Ray Tracing core support in one clock cycle?
+		%\item
+	\end{enumerate}
+
+	% Check the Top500 list (Links to an external site.) that is reporting the 500 most powerful supercomputers in the world. How many of the first 10 most powerful supercomputers use GPUs? Report the name of the supercomputers and the GPU vendor (Nvidia, AMD, ...) and model. 
+	\item .[text here]
+	
+	%Use Google Scholar to find a scientific paper reporting about a work using GPUs in your main domain area (HPC, image processing, machine learning, ...). Report the title, authors, conference name/journal, the GPU type that has been used, and which programming approach has been employed.
+	\item .[text here]
+\end{enumerate}
+
+\section{Exercise 2}
+.[text here]
+% Write here <--
+
+\end{document}
