@@ -75,7 +75,6 @@ ax.set(xlabel='Transfer Size (Bytes)', ylabel='Bandwidth(GB/s)',
 ax.grid()
 ax.plot(dtdx, dtdy)
 ax.set_xscale('log')
-plt.yticks(np.arange(0, max(dtdy)+1, 1.0))
 
 fig.savefig("device-to-device.png")
 
