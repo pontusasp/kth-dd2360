@@ -1,6 +1,7 @@
 \documentclass[a4paper, 12pt]{article}
 \usepackage{graphicx}
 \usepackage{enumitem}
+\usepackage{mathtools}
 \def\code#1{\texttt{#1}}
 \begin{document}
 
@@ -11,9 +12,6 @@
 \maketitle
 \thispagestyle{empty}
 \pagenumbering{roman}
-\newpage
-
-\tableofcontents
 \newpage
 
 \clearpage
@@ -36,7 +34,7 @@
 	
 	% The new Nvidia GPUs (Volta, Turing, and Ampere) introduce two new kinds of cores, namely the Tensor and Ray Tracing cores.
 	\item
-	\begin{enumerate}[label*=\arabic*.]
+	\begin{enumerate}[label=\arabic*.]
 		% Which operation does the Tensor core support in one clock cycle?
 		\item The Tensor core supports doing one multiply-and-accumulate on a 4x4 dimensional matrix per clock cycle.
 		
@@ -85,9 +83,28 @@
 	\newline \textbf{GPU used:} NVIDIA TESLA V100
 	\newline \textbf{Approach:} They approached their problem with using CUDA to perform graph based searches on ANNs using GPUs to speed up the searches.
 \end{enumerate}
-
+\newpage
 \section{Exercise 2}
-.[text here]
+When running the bandwidthTest utility there was three (3) different tests, Host to Device Bandwidth (Figure \ref{fig:htd}), Device to Host Bandwidth (Figure \ref{fig:dth}) and Device to Device Bandwidth (Figure \ref{fig:dtd}) test.
+My first observation was that the Device to Device test had a massively larger bandwidth than the other two tests. I realized this must be because the internal memory transfer rate is much higher than the transfer rate between the GPU and the rest of the system. My second observation was that the bandwidth was increasing the more bytes where transfered, up to a certain limit. I think this curve comes from the latency from the transfer of bytes. The less bytes you transfer the bigger impact the latency has, which would explain the shape of the curve. The curves in Figure \ref{fig:htd} and Figure \ref{fig:dth} both transfer data between the GPU and the rest of the system which is why their curves are close to identical. In Figure \ref{fig:dtd} there is a big drop in the bandwidth after $10^6$ in the X-axis. I am not sure why this happens but I would assume it has to do with something that since the transfer is between two locations in the GPU memory, the memory simply runs out while transferring when doing too big transfers so that it can not transfer with the same efficiency as before.
+\begin{figure}
+	\centering
+	\includegraphics[width=0.8\linewidth]{host-to-device.png}
+	\caption{Host to Device Bandwidth.}
+	\label{fig:htd}
+\end{figure}
+\begin{figure}
+	\centering
+	\includegraphics[width=0.8\linewidth]{device-to-host.png}
+	\caption{Device to Host Bandwidth.}
+	\label{fig:dth}
+\end{figure}
+\begin{figure}
+	\centering
+	\includegraphics[width=0.8\linewidth]{device-to-device.png}
+	\caption{Device to Device Bandwidth.}
+	\label{fig:dtd}
+\end{figure}
 % Write here <--
 
 \end{document}
