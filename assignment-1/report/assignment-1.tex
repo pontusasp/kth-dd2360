@@ -36,7 +36,7 @@
 	\item During this course I plan to use my own GPU, the NVIDIA GeForce GTX 1070. \textbf{[SPECIFY SPECIFIC DETAILS TO MY GPU AND MAKER HERE]}
 	
 	% The new Nvidia GPUs (Volta, Turing, and Ampere) introduce two new kinds of cores, namely the Tensor and Ray Tracing cores.
-	\item Tensor and Ray tracing cores.
+	\item
 	\begin{enumerate}
 		% Which operation does the Tensor core support in one clock cycle?
 		\item The Tensor core supports doing one multiply-and-accumulate on a 4x4 dimensional matrix per clock cycle.
@@ -49,13 +49,16 @@
 		
 		% Check the Google TPU (also an accelerator) characteristic. What are the differences between GPUs with Tensor cores and TPUs?
 		
-		% (Section 4) Without sufficient operational intensity, a program is memory bandwidth-bound and lives under the slanted part of the roofline.
+		%%% (Section 4) Without sufficient operational intensity, a program is memory bandwidth-bound and lives under the slanted part of the roofline.
 		
-		% TPUs have better response-time (better at inference), while GPUs/CPUs typically have larger throughput, but does this apply to tensor cores?
-		\item The biggest difference between the two is response-time. TPUs have a better response-time while GPUs (also GPUs with Tensor cores) have better throughput.
+		%%% TPUs have better response-time (better at inference), while GPUs/CPUs typically have larger throughput, but does this apply to tensor cores?
+		\item The biggest difference between the two other than the structure is response-time. TPUs have a better response-time while GPUs (also GPUs with Tensor cores) have better throughput.
 		
 		% Which operation does the Nvidia Ray Tracing core support in one clock cycle?
-		%\item
+		
+		%% The RT Core includes two specialized units. The first unit does bounding box tests, and the second unit does ray-triangle intersection tests.
+
+		\item I have not been able to find any information on what operation the NVIDIA RT Core supports in one clock cycle. However what I did find is that the NVIDIA RT Core accelerates calculating ray tracing. The RT Core has two specialized units, one which does bounding box tests and the other does ray-trinagle intersection tests.
 	\end{enumerate}
 
 	% Check the Top500 list (Links to an external site.) that is reporting the 500 most powerful supercomputers in the world. How many of the first 10 most powerful supercomputers use GPUs? Report the name of the supercomputers and the GPU vendor (Nvidia, AMD, ...) and model. 
