@@ -25,8 +25,6 @@ ax.set(xlabel='Transfer Size (Bytes)', ylabel='Bandwidth(GB/s)',
        title='Host to Device Bandwidth')
 ax.grid()
 ax.plot(htdx, htdy)
-ax.set_xscale('log')
-plt.yticks(np.arange(0, max(htdy)+1, 1.0))
 
 fig.savefig("host-to-device.png")
 
@@ -49,8 +47,6 @@ ax.set(xlabel='Transfer Size (Bytes)', ylabel='Bandwidth(GB/s)',
        title='Device to Host Bandwidth')
 ax.grid()
 ax.plot(dthx, dthy)
-ax.set_xscale('log')
-plt.yticks(np.arange(0, max(dthy)+1, 1.0))
 
 fig.savefig("device-to-host.png")
 
@@ -74,7 +70,6 @@ ax.set(xlabel='Transfer Size (Bytes)', ylabel='Bandwidth(GB/s)',
        title='Device to Device Bandwidth')
 ax.grid()
 ax.plot(dtdx, dtdy)
-ax.set_xscale('log')
 
 fig.savefig("device-to-device.png")
 
