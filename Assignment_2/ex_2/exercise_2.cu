@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <random>
 #include <cmath>
+#include <chrono>
 
-#define ARRAY_SIZE 10000
+#define ARRAY_SIZE 1000000
 #define BLOCK_SIZE 256
 
 __global__ void device_saxpy(float* x, float* y, const float a)
@@ -44,19 +45,30 @@ int main()
     cudaMemcpy(d_x, x, ARRAY_SIZE * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_y, y, ARRAY_SIZE * sizeof(float), cudaMemcpyHostToDevice);
 
-
     // call host func
     printf("Computing SAXPY on the CPU... ");
+
+    auto start = std::chrono::system_clock::now();
     host_saxpy(x, y, a);
-    printf("Done!\n\n");
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> host_time = (end-start) * 1000;
+
+    printf("Done in %f ms!\n\n", host_time.count());
 
 
+    
     // call device func
     printf("Computing SAXPY on the GPU... ");
+
+    start = std::chrono::system_clock::now();
     device_saxpy<<<(ARRAY_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE,
         BLOCK_SIZE>>>(d_x, d_y, a);
     cudaDeviceSynchronize();
-    printf("Done!\n\n");
+    end = std::chrono::system_clock::now();
+    std::chrono::duration<double> device_time = (end-start) * 1000;
+    
+    printf("Done in %f ms!\n\n", device_time.count());
+
 
 
     // Get results from device and store in d_res
