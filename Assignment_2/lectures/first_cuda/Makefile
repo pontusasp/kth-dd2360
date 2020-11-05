@@ -11,8 +11,11 @@ CPP_FILES=main.cpp
 
 all:cuda
 
-cuda:kernel.cu
+cuda:kernel.cu | bin
 	$(NVCC) $(CUDA_FILES) -o ./bin/kernel
 
-cpp:main.cpp
+cpp:main.cpp | bin
 	$(CC)  $(CPP_FILES) -o ./bin/main
+
+bin:
+	mkdir -p $@
