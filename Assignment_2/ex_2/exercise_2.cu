@@ -3,7 +3,7 @@
 #include <cmath>
 #include <chrono>
 
-#define ARRAY_SIZE 1000000
+#define ARRAY_SIZE 10000000
 #define BLOCK_SIZE 256
 
 __global__ void device_saxpy(float* x, float* y, const float a)
@@ -22,6 +22,8 @@ void host_saxpy(float x[], float y[], const float a)
 
 int main()
 {
+
+    // ============= SET UP ARRAYS ============== //
     std::default_random_engine rdmGen;
     std::uniform_real_distribution<float> dist(0.0, 5.0);
 
@@ -35,7 +37,14 @@ int main()
         y[i] = dist(rdmGen);
     }
 
+
+
+    // ============= START COMPUTING ON DEVICE ============== //
+    printf("Computing SAXPY on the GPU... ");
+
     // Create, allocate and copy array to device
+    auto start = std::chrono::system_clock::now();
+
     float* d_x = 0;
     float* d_y = 0;
 
@@ -45,25 +54,23 @@ int main()
     cudaMemcpy(d_x, x, ARRAY_SIZE * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_y, y, ARRAY_SIZE * sizeof(float), cudaMemcpyHostToDevice);
 
-    // call host func
-    printf("Computing SAXPY on the CPU... ");
+    device_saxpy<<<(ARRAY_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE,
+        BLOCK_SIZE>>>(d_x, d_y, a);
+    cudaDeviceSynchronize();
 
-    auto start = std::chrono::system_clock::now();
-    host_saxpy(x, y, a);
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> host_time = (end-start) * 1000;
 
     printf("Done in %f ms!\n\n", host_time.count());
 
 
-    
-    // call device func
-    printf("Computing SAXPY on the GPU... ");
+
+
+    // ============= START COMPUTING ON HOST ============== //
+    printf("Computing SAXPY on the CPU... ");
 
     start = std::chrono::system_clock::now();
-    device_saxpy<<<(ARRAY_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE,
-        BLOCK_SIZE>>>(d_x, d_y, a);
-    cudaDeviceSynchronize();
+    host_saxpy(x, y, a);
     end = std::chrono::system_clock::now();
     std::chrono::duration<double> device_time = (end-start) * 1000;
     
@@ -71,10 +78,12 @@ int main()
 
 
 
+
+    // ============= COMPARE OUTPUTS ============== //
+
     // Get results from device and store in d_res
     cudaMemcpy(x, d_y, ARRAY_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
 
-    // compare d_res to y
     printf("Comparing the output for each implementation... ");
 
     bool correct = true;
@@ -88,7 +97,10 @@ int main()
     if(correct) printf("Correct!\n");
     else printf("Incorrect!\n");
 
-    // Free up resources
+
+
+
+    // ============= FREE RESOURCES ============== //
     free(y);
     free(x);
 
