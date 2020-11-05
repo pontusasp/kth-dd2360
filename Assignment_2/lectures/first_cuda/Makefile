@@ -1,0 +1,18 @@
+CC=g++
+CC_FLAGS=
+CC_LIBS=
+
+NVCC=nvcc
+NVCC_FLAGS=
+NVCC_LIBS=
+
+CUDA_FILES=kernel.cu
+CPP_FILES=main.cpp
+
+all:cuda
+
+cuda:kernel.cu
+	$(NVCC) $(CUDA_FILES) -o ./bin/kernel
+
+cpp:main.cpp
+	$(CC)  $(CPP_FILES) -o ./bin/main
