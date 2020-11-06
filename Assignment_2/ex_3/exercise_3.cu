@@ -108,9 +108,9 @@ int main(int argc, char **argv)
     cudaFree(d_particles);
 
     auto end = std::chrono::system_clock::now();
-    std::chrono::duration<double> host_time = end-start;
-
-    printf("\tDone in %f s!\n\n", host_time.count());
+    std::chrono::duration<double> device_time = end-start;
+    
+    printf("\tDone in %f s!\n\n", device_time.count());
 
 
 
@@ -124,9 +124,9 @@ int main(int argc, char **argv)
     }
 
     end = std::chrono::system_clock::now();
-    std::chrono::duration<double> device_time = end-start;
-    
-    printf("\tDone in %f s!\n\n", device_time.count());
+    std::chrono::duration<double> host_time = end-start;
+
+    printf("\tDone in %f s!\n\n", host_time.count());
     printf("All done!\n");
 
     free(d_res);
