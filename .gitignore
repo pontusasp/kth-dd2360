@@ -1,4 +1,10 @@
-*/report/*
-!*/report/*.tex
-*.png
+*.txt
+*.dat
+*.aux
+*.fdb_latexmk
+*.dfb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
 bin/
