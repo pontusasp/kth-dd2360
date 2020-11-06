@@ -44,8 +44,9 @@ void host_timestep(Particle* p, float4 f, const int num_particles)
 // returns if values successfully read or not.
 bool setValuesFromArgs(int argc, char **argv, unsigned int *block_size, unsigned int *num_iterations, unsigned int *num_particles)
 {
-    if (argc != 4) {
-        printf("Incorrect parameters!\nUsage: %s <block size> <num iterations> <num particles>\n", *argv);
+    if (argc < 4) {
+        printf("Incorrect parameters!\nUsage: %s <block size> <num iterations>\
+         <num particles> [1 extra arg for gpu benchmark output, 2 for cpu]\n", *argv);
         return false;
     }
     char *s;
@@ -60,7 +61,11 @@ int main(int argc, char **argv)
     unsigned int block_size, num_iterations, num_particles;
     if(!setValuesFromArgs(argc, argv, &block_size, &num_iterations, &num_particles)) return 0;
 
-    printf("Starting simulation on %d particles with %d iterations, GPU set to use block size %d...\n\n", num_particles, num_iterations, block_size);
+    bool gpuBench = argc == 5;
+    bool cpuBench = argc == 6;
+
+    if (!(gpuBench || cpuBench))
+        printf("Starting simulation on %d particles with %d iterations, GPU set to use block size %d...\n\n", num_particles, num_iterations, block_size);
     
     Particle *particles = (Particle*)malloc(num_particles * sizeof(Particle));
     Particle *d_res = (Particle*)malloc(num_particles * sizeof(Particle));
@@ -89,45 +94,56 @@ int main(int argc, char **argv)
 
 
     // ============= START COMPUTING ON DEVICE ============== //
-    printf("Simulating on the GPU...\n");
+    if (!cpuBench) {
+        if (!gpuBench)
+            printf("Simulating on the GPU...\n");
 
-    auto start = std::chrono::system_clock::now();
-    
-    // Create, allocate and copy array to device
-    Particle* d_particles = 0;
-    cudaMalloc(&d_particles, num_particles * sizeof(Particle));
-    cudaMemcpy(d_particles, particles, num_particles * sizeof(Particle), cudaMemcpyHostToDevice);
+        auto start1 = std::chrono::system_clock::now();
+        
+        // Create, allocate and copy array to device
+        Particle* d_particles = 0;
+        cudaMalloc(&d_particles, num_particles * sizeof(Particle));
+        cudaMemcpy(d_particles, particles, num_particles * sizeof(Particle), cudaMemcpyHostToDevice);
 
-    for(int i = 0; i < num_iterations; i++) {
-        device_timestep<<<(num_particles + block_size - 1) / block_size,
-            block_size>>>(d_particles, forces);
+        for(int i = 0; i < num_iterations; i++) {
+            device_timestep<<<(num_particles + block_size - 1) / block_size,
+                block_size>>>(d_particles, forces);
+        }
+
+        cudaDeviceSynchronize();
+        cudaMemcpy(d_res, d_particles, num_particles * sizeof(Particle), cudaMemcpyDeviceToHost);
+        cudaFree(d_particles);
+
+        auto end1 = std::chrono::system_clock::now();
+        std::chrono::duration<double> device_time = end1-start1;
+        
+        if (!gpuBench)
+            printf("\tDone in %f s!\n\n", device_time.count());
+        else
+            printf("%f\n", device_time.count());
     }
 
-    cudaDeviceSynchronize();
-    cudaMemcpy(d_res, d_particles, num_particles * sizeof(Particle), cudaMemcpyDeviceToHost);
-    cudaFree(d_particles);
 
-    auto end = std::chrono::system_clock::now();
-    std::chrono::duration<double> device_time = end-start;
-    
-    printf("\tDone in %f s!\n\n", device_time.count());
+    if (!gpuBench) {
+        // ============= START COMPUTING ON HOST ============== //
+        if (!cpuBench)
+            printf("Simulating on the CPU...\n");
 
+        auto start2 = std::chrono::system_clock::now();
 
+        for(int i = 0; i < num_iterations; i++) {
+            host_timestep(particles, forces, num_particles);
+        }
 
-    // ============= START COMPUTING ON HOST ============== //
-    printf("Simulating on the CPU...\n");
+        auto end2 = std::chrono::system_clock::now();
+        std::chrono::duration<double> host_time = end2-start2;
 
-    start = std::chrono::system_clock::now();
-
-    for(int i = 0; i < num_iterations; i++) {
-        host_timestep(particles, forces, num_particles);
+        if (!cpuBench) {
+            printf("\tDone in %f s!\n\n", host_time.count());
+            printf("All done!\n");
+        }
+        else printf("%f\n", host_time.count());
     }
-
-    end = std::chrono::system_clock::now();
-    std::chrono::duration<double> host_time = end-start;
-
-    printf("\tDone in %f s!\n\n", host_time.count());
-    printf("All done!\n");
 
     free(d_res);
     free(particles);
