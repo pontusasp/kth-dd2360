@@ -26,7 +26,7 @@ for t in range(0, len(particleSizes)):
        fig, ax = plt.subplots()
 
        ax.set(xlabel='Block Size', ylabel='Average time (s) (5 samples)',
-              title=' CUDA GPU Simulation: 10k Iterations, ' + str(int(int(particleSizes[t])/1000)) + 'k Particles')
+              title=' CUDA GPU Simulation: 1k Iterations, ' + str(int(int(particleSizes[t])/1000)) + 'k Particles')
        ax.grid()
        ax.bar(blockSizes, deviceList)
 
@@ -53,7 +53,7 @@ for t in range(0, len(particleSizes)):
 fig, ax = plt.subplots()
 
 ax.set(xlabel='Particle count', ylabel='Average time (s) (5 samples)',
-       title='CPU Simulation: 10k Iterations, ' + str(int(int(particleSizes[t])/1000)) + 'k Particles')
+       title='CPU Simulation: 1k Iterations, ' + str(int(int(particleSizes[t])/1000)) + 'k Particles')
 ax.grid()
 ax.bar(particleSizes, hostList)
 

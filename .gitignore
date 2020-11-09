@@ -1,5 +1,4 @@
 *.txt
-*.dat
 *.aux
 *.fdb_latexmk
 *.dfb_latexmk

@@ -13,7 +13,7 @@ do
     do
         for x in 1 2 3 4 5
         do
-            ../../ex_3/bin/out $b 10000 $i gpu >> ex_3_gpu_output.dat
+            ../../ex_3/bin/out $b 1000 $i gpu >> ex_3_gpu_output.dat
             printf "."
         done
     done
