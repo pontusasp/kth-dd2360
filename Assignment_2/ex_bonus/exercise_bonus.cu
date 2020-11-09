@@ -56,6 +56,9 @@ int main(int argc, char* argv[])
     unsigned int block_size, num_threads, num_iter;
     if(!setValuesFromArgs(argc, argv, &block_size, &num_threads, &num_iter)) return 0;
 
+    // Change num_threads to a multiple of block_size to prevent unexpected outcomes (memory size not matching up etc)
+    num_threads = ((num_threads + block_size - 1) / block_size) * block_size; 
+
     PRECISION count = 0.0;
     PRECISION pi;
 
