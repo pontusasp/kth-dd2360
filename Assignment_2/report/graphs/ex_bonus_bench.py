@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import re
-impor
 
 iterList = ["1000", "10000", "100000", "1000000"]
 blockSizes = ["16", "32", "64", "128", "256"]
