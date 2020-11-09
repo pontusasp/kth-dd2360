@@ -1,5 +1,6 @@
 #include <curand_kernel.h>
 #include <curand.h>
+#include <chrono>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,7 +41,7 @@ __global__ void monteCuda(PRECISION *counts, int num_iter, curandState *states)
 // returns if values successfully read or not.
 bool setValuesFromArgs(int argc, char **argv, unsigned int *block_size, unsigned int *num_threads, unsigned int *num_iter)
 {
-    if (argc != 4) {
+    if (argc < 4) {
         printf("Incorrect parameters!\nUsage: %s <block size> <num threads> <iterations per thread>\n", *argv);
         return false;
     }
@@ -55,6 +56,10 @@ int main(int argc, char* argv[])
 {
     unsigned int block_size, num_threads, num_iter;
     if(!setValuesFromArgs(argc, argv, &block_size, &num_threads, &num_iter)) return 0;
+
+    bool bench = argc == 5;
+
+    auto start = std::chrono::system_clock::now();
 
     // Change num_threads to a multiple of block_size to prevent unexpected outcomes (memory size not matching up etc)
     num_threads = ((num_threads + block_size - 1) / block_size) * block_size; 
@@ -81,8 +86,14 @@ int main(int argc, char* argv[])
     }
 
     pi = (count / (PRECISION)num_threads) * 4.0;
+
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> time = end-start;
     
-    printf("The result is %f\n", pi);
+    if(bench) {
+        printf("%f %f\n", pi, time.count());
+    }
+    else printf("The result is %f\n", pi);
     
     return 0;
 }
