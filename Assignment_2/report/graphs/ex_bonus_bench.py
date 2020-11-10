@@ -21,31 +21,49 @@ singleTime = np.empty((len(blockSizes), len(iterList)), float)
 singleError = np.empty((len(blockSizes), len(iterList)), float)
 
 i = 0
-for iter in range(0, len(iterList)):
+for it in range(0, len(iterList)):
        for block in range(0, len(blockSizes)):
 
               d_pi, d_time = re.findall(r"[-+]?\d*\.\d+|\d+", doublef[i])
               s_pi, s_time = re.findall(r"[-+]?\d*\.\d+|\d+", singlef[i])
 
-              doubleTime[block, iter] = d_time
-              doubleError[block, iter] = abs(np.pi - d_pi)
+              d_pi = float(d_pi)
+              d_time = float(d_time)
 
-              singleTime[block, iter] = s_time
-              singleError[block, iter] = abs(np.pi - s_pi)
+              s_pi = float(s_pi)
+              s_time = float(s_time)
+
+              doubleTime[block, it] = d_time
+              doubleError[block, it] = 100 * abs(np.pi - d_pi) / np.pi
+
+              singleTime[block, it] = s_time
+              singleError[block, it] = 100 * abs(np.pi - s_pi) / np.pi
 
               i = i + 1
 
 
 
-'''
+def plot(mat, title, xlabel, ylabel, filename, logscale=False):
 
-fig, ax = plt.subplots()
+       for b in range(0, len(blockSizes)):
+              plt.plot(iterList, mat[b])
+       
+       plt.legend(blockSizes, loc='upper left')
+       plt.grid()
+       plt.xlabel(xlabel)
+       plt.ylabel(ylabel)
+       if logscale:
+              plt.yscale('log')
+              plt.savefig(filename + "_log.png")
+       else:
+              plt.savefig(filename + ".png")
+       plt.close()
 
-ax.set(xlabel='Particle count', ylabel='Average time (s) (5 samples)',
-       title='CPU Simulation: 1k Iterations')
-ax.grid()
-ax.bar(particleSizes, hostList)
 
-fig.savefig("ex_3_graph_cpu.png")
+plot(doubleTime, "Double Precision", "Iterations", "Time (s)", "ex_bonus_double")
+plot(doubleTime, "Double Precision Logarithmic", "Iterations", "Time Logarithmic (s)", "ex_bonus_double", logscale=True)
+plot(doubleError, "Double Precision", "Iterations", "Error (%)", "ex_bonus_double_error")
 
-'''
+plot(doubleTime, "Single Precision", "Iterations", "Time (s)", "ex_bonus_single")
+plot(doubleTime, "Single Precision Logarithmic", "Iterations", "Time Logarithmic (s)", "ex_bonus_single", logscale=True)
+plot(doubleError, "Single Precision", "Iterations", "Error (%)", "ex_bonus_single_error")
