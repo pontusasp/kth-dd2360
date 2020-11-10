@@ -52,6 +52,7 @@ def plot(mat, title, xlabel, ylabel, filename, logscale=False):
        plt.grid()
        plt.xlabel(xlabel)
        plt.ylabel(ylabel)
+       plt.title(title)
        if logscale:
               plt.yscale('log')
               plt.savefig(filename + "_log.png")
