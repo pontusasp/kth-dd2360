@@ -101,15 +101,70 @@ I did a number of different test runs on the CPU and GPU. Each time measured in 
     \label{fig:test}
 \end{figure}
 
+\newpage
+\section{Bonus Exercise}
+
+\begin{figure}
+  \centering
+  \begin{subfigure}{.5\textwidth}
+    \centering
+    \includegraphics[width=1\linewidth]{graphs/ex_bonus_double.png}
+    \caption{Linear y-axis}
+    \label{fig:ex-bonus-double-linear}
+  \end{subfigure}%
+  \begin{subfigure}{.5\textwidth}
+    \centering
+    \includegraphics[width=1\linewidth]{graphs/ex_bonus_double_log.png}
+    \caption{Logarithmic y-axis}
+    \label{fig:fig:ex-bonus-double-log}
+  \end{subfigure}
+  \caption{Graphs of execution time when using double precision for different block sizes.}
+  \label{fig:fig:ex-bonus-double}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \begin{subfigure}{.5\textwidth}
+    \centering
+    \includegraphics[width=1\linewidth]{graphs/ex_bonus_single.png}
+    \caption{Linear y-axis}
+    \label{fig:ex-bonus-single-linear}
+  \end{subfigure}%
+  \begin{subfigure}{.5\textwidth}
+    \centering
+    \includegraphics[width=1\linewidth]{graphs/ex_bonus_single_log.png}
+    \caption{Logarithmic y-axis}
+    \label{fig:fig:ex-bonus-single-log}
+  \end{subfigure}
+  \caption{Graphs of execution time when using single precision for different block sizes.}
+  \label{fig:fig:ex-bonus-single}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \begin{subfigure}{.5\textwidth}
+    \centering
+    \includegraphics[width=1\linewidth]{graphs/ex_bonus_double_error.png}
+    \caption{Double Precision}
+    \label{fig:ex-single-double-error}
+  \end{subfigure}%
+  \begin{subfigure}{.5\textwidth}
+    \centering
+    \includegraphics[width=1\linewidth]{graphs/ex_bonus_single_error.png}
+    \caption{Single Precision}
+    \label{fig:ex-bonus-single-error}
+  \end{subfigure}
+  \caption{Graphs of error using double and single precision with different amounts of iterations and block sizes.}
+  \label{fig:fig:ex-bonus-error}
+\end{figure}
+
 % 1. Measure the execution time of the GPU version, varying NUM_ITER.
 
 % 2. Measure the execution time, varying the block size in the GPU version from 16, 32, …, up to 256 threads per block.
 
 % 3. Change the code to single precision and compare the result and performance with the code using double precision. Do you obtain what you expected in terms of accuracy and performance? Motivate your answer.
-\section{Bonus Exercise}
 
-
-
+I measured performance for a few different number of iterations and also tried different block sizes for each of those runs, and also did the same runs with both single and double precision and summed up my data in six graphs. My findings were unsurprisingly that single precision was less precise, and also faster than double precision. However I was surprised by just how much faster single precision was than double precision. In test with the most particles the program finished approximately 10 times faster when using single precision compared to double precision. It did cost a bit of accuracy tho, the same run yielded an error of approximately $0.0002\%$ for the double precision and $0.014\%$ for single precision. One surprise when looking at \f{ex-bonus-single-error} was that the error seemed to grow with the number of iterations. My hypothesis is that the error is growing bigger with the massive amount of computations towards the end when using less precision.
 
 % Write here <--
 
