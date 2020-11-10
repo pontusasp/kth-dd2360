@@ -65,6 +65,6 @@ plot(doubleTime, "Double Precision", "Iterations", "Time (s)", "ex_bonus_double"
 plot(doubleTime, "Double Precision Logarithmic", "Iterations", "Time Logarithmic (s)", "ex_bonus_double", logscale=True)
 plot(doubleError, "Double Precision", "Iterations", "Error (%)", "ex_bonus_double_error")
 
-plot(doubleTime, "Single Precision", "Iterations", "Time (s)", "ex_bonus_single")
-plot(doubleTime, "Single Precision Logarithmic", "Iterations", "Time Logarithmic (s)", "ex_bonus_single", logscale=True)
-plot(doubleError, "Single Precision", "Iterations", "Error (%)", "ex_bonus_single_error")
+plot(singleTime, "Single Precision", "Iterations", "Time (s)", "ex_bonus_single")
+plot(singleTime, "Single Precision Logarithmic", "Iterations", "Time Logarithmic (s)", "ex_bonus_single", logscale=True)
+plot(singleError, "Single Precision", "Iterations", "Error (%)", "ex_bonus_single_error")
