@@ -181,8 +181,6 @@ __global__ void gpu_grayscale(int width, int height, float *image, float *image_
     // Implement the GPU version of the grayscale conversion //
     ///////////////////////////////////////////////////////////
 
-    int idx = threadIdx.y * blockDim.x + threadIdx.x;
-
     int h = blockIdx.y * blockDim.y + threadIdx.y;
     int w = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -203,7 +201,7 @@ __global__ void gpu_grayscale(int width, int height, float *image, float *image_
 /**
  * Applies a 3x3 convolution matrix to a pixel using the CPU.
  */
-float cpu_applyFilter(float *image, int stride, float *matrix, int filter_dim)
+ __host__ __device__ float cpu_applyFilter(float *image, int stride, float *matrix, int filter_dim)
 {
     float pixel = 0.0f;
     
@@ -230,10 +228,10 @@ __device__ float gpu_applyFilter(float *image, int stride, float *matrix, int fi
     // TO-DO #5.2 ////////////////////////////////////////////////
     // Implement the GPU version of cpu_applyFilter()           //
     //                                                          //
-    // Does it make sense to have a separate gpu_applyFilter()? //
+    // Does it make sense to have a separate gpu_applyFilter()? //   No it doesn't.
     //////////////////////////////////////////////////////////////
     
-    return 0.0f;
+    return cpu_applyFilter(image, stride, matrix, filter_dim);
 }
 
 /**
@@ -364,7 +362,7 @@ int main(int argc, char **argv)
     {
         // Launch the CPU version
         gettimeofday(&t[0], NULL);
-        cpu_grayscale(bitmap.width, bitmap.height, bitmap.data, image_out[0]);
+        //cpu_grayscale(bitmap.width, bitmap.height, bitmap.data, image_out[0]);
         gettimeofday(&t[1], NULL);
         
         elapsed[0] = get_elapsed(t[0], t[1]);
@@ -378,7 +376,7 @@ int main(int argc, char **argv)
             d_image_out[0]
         );
 
-        cudaDeviceSynchronize();
+        cudaDeviceSynchronize(); // TODO: Remove??
         
         cudaMemcpy(image_out[0], d_image_out[0],
                    image_size * sizeof(float), cudaMemcpyDeviceToHost);
@@ -401,11 +399,11 @@ int main(int argc, char **argv)
         
         // Launch the GPU version
         gettimeofday(&t[0], NULL);
-        // gpu_gaussian<<<grid, block>>>(bitmap.width, bitmap.height,
-        //                               d_image_out[0], d_image_out[1]);
-        
-        // cudaMemcpy(image_out[1], d_image_out[1],
-        //            image_size * sizeof(float), cudaMemcpyDeviceToHost);
+        gpu_gaussian<<<grid, block>>>(bitmap.width, bitmap.height,
+                                      d_image_out[0], d_image_out[1]);
+        cudaDeviceSynchronize(); // TODO: Remove??
+        cudaMemcpy(image_out[1], d_image_out[1],
+                   image_size * sizeof(float), cudaMemcpyDeviceToHost);
         gettimeofday(&t[1], NULL);
         
         elapsed[1] = get_elapsed(t[0], t[1]);
@@ -425,11 +423,11 @@ int main(int argc, char **argv)
         
         // Launch the GPU version
         gettimeofday(&t[0], NULL);
-        // gpu_sobel<<<grid, block>>>(bitmap.width, bitmap.height,
-        //                            d_image_out[1], d_image_out[0]);
+        gpu_sobel<<<grid, block>>>(bitmap.width, bitmap.height,
+                                   d_image_out[1], d_image_out[0]);
         
-        // cudaMemcpy(image_out[0], d_image_out[0],
-        //            image_size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(image_out[0], d_image_out[0],
+                   image_size * sizeof(float), cudaMemcpyDeviceToHost);
         gettimeofday(&t[1], NULL);
         
         elapsed[1] = get_elapsed(t[0], t[1]);
