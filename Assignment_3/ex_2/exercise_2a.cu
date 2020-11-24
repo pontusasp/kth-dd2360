@@ -71,7 +71,8 @@ int main(int argc, char **argv)
         printf("Starting simulation on %d particles with %d iterations, GPU set to use block size %d...\n\n", num_particles, num_iterations, block_size);
     
     Particle *particles = (Particle*)malloc(num_particles * sizeof(Particle));
-    Particle *d_res = (Particle*)malloc(num_particles * sizeof(Particle));
+    Particle *d_res;
+    cudaMallocHost((void**)&d_res, num_particles * sizeof(Particle), cudaHostAllocDefault);
 
     std::default_random_engine rdmGen;
     std::uniform_real_distribution<float> posDist(-100.0, 100.0);
@@ -150,7 +151,7 @@ int main(int argc, char **argv)
         else printf("%f\n", host_time.count());
     }
 
-    free(d_res);
+    cudaFree(d_res);
     free(particles);
     
     return 0;
