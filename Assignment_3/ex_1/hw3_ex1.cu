@@ -276,10 +276,22 @@ __global__ void gpu_gaussian(int width, int height, float *image, float *image_o
     if (index_x < (width - 2) && index_y < (height - 2))
     {
         
-        int offset_b = threadIdx.x * BLOCK_SIZE_SH + threadIdx.y;
+        int offset_b = threadIdx.y * BLOCK_SIZE_SH + threadIdx.x;
         int offset_t = index_y * width + index_x;
         int offset   = (index_y + 1) * width + (index_x + 1);
 
+        if(threadIdx.x >= BLOCK_SIZE - 2) {
+            sh_block[offset_b + 2] = image[offset_t + 2];
+        }
+
+        if(threadIdx.y >= BLOCK_SIZE - 2) {
+            sh_block[offset_b + 2 * BLOCK_SIZE_SH] = image[offset_t + 2 * width];
+        }
+
+        if(threadIdx.x >= BLOCK_SIZE - 2 && threadIdx.y >= BLOCK_SIZE - 2) {
+            sh_block[offset_b + 2 + 2 * BLOCK_SIZE_SH] = image[offset_t + 2 + 2 * width];
+        }
+        
         sh_block[offset_b] = image[offset_t];
         __syncthreads();
         
@@ -344,9 +356,21 @@ __global__ void gpu_sobel(int width, int height, float *image, float *image_out)
     
     if (index_x < (width - 2) && index_y < (height - 2))
     {
-        int offset_b = threadIdx.x * BLOCK_SIZE_SH + threadIdx.y;
+        int offset_b = threadIdx.y * BLOCK_SIZE_SH + threadIdx.x;
         int offset_t = index_y * width + index_x;
         int offset   = (index_y + 1) * width + (index_x + 1);
+        
+        if(threadIdx.x >= BLOCK_SIZE - 2) {
+            sh_block[offset_b + 2] = image[offset_t + 2];
+        }
+
+        if(threadIdx.y >= BLOCK_SIZE - 2) {
+            sh_block[offset_b + 2 * BLOCK_SIZE_SH] = image[offset_t + 2 * width];
+        }
+
+        if(threadIdx.x >= BLOCK_SIZE - 2 && threadIdx.y >= BLOCK_SIZE - 2) {
+            sh_block[offset_b + 2 + 2 * BLOCK_SIZE_SH] = image[offset_t + 2 + 2 * width];
+        }
         
         sh_block[offset_b] = image[offset_t];
         __syncthreads();
