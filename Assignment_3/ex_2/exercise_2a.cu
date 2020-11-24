@@ -106,15 +106,17 @@ int main(int argc, char **argv)
         // Create, allocate and copy array to device
         Particle* d_particles = 0;
         cudaMalloc(&d_particles, num_particles * sizeof(Particle));
-        cudaMemcpy(d_particles, particles, num_particles * sizeof(Particle), cudaMemcpyHostToDevice);
 
         for(int i = 0; i < num_iterations; i++) {
+            cudaMemcpy(d_particles, particles, num_particles * sizeof(Particle), cudaMemcpyHostToDevice);
+
             device_timestep<<<(num_particles + block_size - 1) / block_size,
                 block_size>>>(d_particles, forces);
+                
+            cudaDeviceSynchronize();
+            cudaMemcpy(d_res, d_particles, num_particles * sizeof(Particle), cudaMemcpyDeviceToHost);
         }
 
-        cudaDeviceSynchronize();
-        cudaMemcpy(d_res, d_particles, num_particles * sizeof(Particle), cudaMemcpyDeviceToHost);
         cudaFree(d_particles);
 
         auto end1 = std::chrono::system_clock::now();
