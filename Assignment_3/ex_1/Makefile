@@ -15,3 +15,6 @@ all: $(CUDA_FILES) $(CPP_FILES)
 
 bin:
 	mkdir -p $@
+
+debug: $(CUDA_FILES) $(CPP_FILES)
+	$(NVCC) $(CUDA_FILES) $(CPP_FILES) -lineinfo -Xcompiler -rdynamic $(NVCC_FLAGS) -o ./$(OUT_FILE)
