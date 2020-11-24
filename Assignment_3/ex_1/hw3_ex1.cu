@@ -7,6 +7,8 @@
 #define BLOCK_SIZE  16
 #define HEADER_SIZE 138
 
+#define BLOCK_SIZE_SH 18
+
 typedef unsigned char BYTE;
 
 /**
@@ -261,6 +263,9 @@ void cpu_gaussian(int width, int height, float *image, float *image_out)
  */
 __global__ void gpu_gaussian(int width, int height, float *image, float *image_out)
 {
+
+    __shared__ float sh_block[BLOCK_SIZE_SH * BLOCK_SIZE_SH];
+
     float gaussian[9] = { 1.0f / 16.0f, 2.0f / 16.0f, 1.0f / 16.0f,
                           2.0f / 16.0f, 4.0f / 16.0f, 2.0f / 16.0f,
                           1.0f / 16.0f, 2.0f / 16.0f, 1.0f / 16.0f };
@@ -270,11 +275,16 @@ __global__ void gpu_gaussian(int width, int height, float *image, float *image_o
     
     if (index_x < (width - 2) && index_y < (height - 2))
     {
+        
+        int offset_b = threadIdx.x * BLOCK_SIZE_SH + threadIdx.y;
         int offset_t = index_y * width + index_x;
         int offset   = (index_y + 1) * width + (index_x + 1);
+
+        sh_block[offset_b] = image[offset_t];
+        __syncthreads();
         
-        image_out[offset] = gpu_applyFilter(&image[offset_t],
-                                            width, gaussian, 3);
+        image_out[offset] = gpu_applyFilter(&sh_block[offset_b],
+            BLOCK_SIZE_SH, gaussian, 3);
     }
 }
 
@@ -316,6 +326,7 @@ __global__ void gpu_sobel(int width, int height, float *image, float *image_out)
     // TO-DO #6.1 /////////////////////////////////////
     // Implement the GPU version of the Sobel filter //
     ///////////////////////////////////////////////////
+    __shared__ float sh_block[BLOCK_SIZE_SH * BLOCK_SIZE_SH];
 
     float sobel_x[9] = {
         1.0f,  0.0f, -1.0f,
@@ -333,11 +344,15 @@ __global__ void gpu_sobel(int width, int height, float *image, float *image_out)
     
     if (index_x < (width - 2) && index_y < (height - 2))
     {
+        int offset_b = threadIdx.x * BLOCK_SIZE_SH + threadIdx.y;
         int offset_t = index_y * width + index_x;
         int offset   = (index_y + 1) * width + (index_x + 1);
+        
+        sh_block[offset_b] = image[offset_t];
+        __syncthreads();
 
-        float gx = gpu_applyFilter(&image[offset_t], width, sobel_x, 3);
-        float gy = gpu_applyFilter(&image[offset_t], width, sobel_y, 3);
+        float gx = gpu_applyFilter(&sh_block[offset_b], BLOCK_SIZE_SH, sobel_x, 3);
+        float gy = gpu_applyFilter(&sh_block[offset_b], BLOCK_SIZE_SH, sobel_y, 3);
 
         // Note: The output can be negative or exceed the max. color value
         // of 255. We compensate this afterwards while storing the file.
@@ -419,7 +434,7 @@ int main(int argc, char **argv)
     {
         // Launch the CPU version
         gettimeofday(&t[0], NULL);
-        cpu_gaussian(bitmap.width, bitmap.height, image_out[0], image_out[1]);
+        //cpu_gaussian(bitmap.width, bitmap.height, image_out[0], image_out[1]);
         gettimeofday(&t[1], NULL);
         
         elapsed[0] = get_elapsed(t[0], t[1]);
@@ -443,7 +458,7 @@ int main(int argc, char **argv)
     {
         // Launch the CPU version
         gettimeofday(&t[0], NULL);
-        cpu_sobel(bitmap.width, bitmap.height, image_out[1], image_out[0]);
+        //cpu_sobel(bitmap.width, bitmap.height, image_out[1], image_out[0]);
         gettimeofday(&t[1], NULL);
         
         elapsed[0] = get_elapsed(t[0], t[1]);
