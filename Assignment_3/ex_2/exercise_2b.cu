@@ -71,7 +71,8 @@ int main(int argc, char **argv)
         printf("Starting simulation on %d particles with %d iterations, GPU set to use block size %d...\n\n", num_particles, num_iterations, block_size);
     
     Particle *particles = (Particle*)malloc(num_particles * sizeof(Particle));
-    Particle *d_res = (Particle*)malloc(num_particles * sizeof(Particle));
+    Particle *d_res;
+    cudaMallocManaged(&d_res, num_particles * sizeof(Particle));
 
     std::default_random_engine rdmGen;
     std::uniform_real_distribution<float> posDist(-100.0, 100.0);
@@ -104,18 +105,13 @@ int main(int argc, char **argv)
         auto start1 = std::chrono::system_clock::now();
         
         // Create, allocate and copy array to device
-        Particle* d_particles = 0;
-        cudaMalloc(&d_particles, num_particles * sizeof(Particle));
-        cudaMemcpy(d_particles, particles, num_particles * sizeof(Particle), cudaMemcpyHostToDevice);
 
         for(int i = 0; i < num_iterations; i++) {
             device_timestep<<<(num_particles + block_size - 1) / block_size,
-                block_size>>>(d_particles, forces);
+                block_size>>>(d_res, forces);
+            cudaDeviceSynchronize();
         }
 
-        cudaDeviceSynchronize();
-        cudaMemcpy(d_res, d_particles, num_particles * sizeof(Particle), cudaMemcpyDeviceToHost);
-        cudaFree(d_particles);
 
         auto end1 = std::chrono::system_clock::now();
         std::chrono::duration<double> device_time = end1-start1;
@@ -148,7 +144,7 @@ int main(int argc, char **argv)
         else printf("%f\n", host_time.count());
     }
 
-    free(d_res);
+    cudaFree(d_res);
     free(particles);
     
     return 0;
