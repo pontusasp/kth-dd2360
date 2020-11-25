@@ -38,7 +38,7 @@ Here is the link to my git repository:\\
 % 4. There are several images of different sizes in the image folder. Try running the program on them and report how their execution time relates to file sizes.
 \section{Exercise 1}
 % 1
-In the code we were given the kernel function are called with GPU thread and thread blocks already defined for us like: \code{kernel<<<grid, block>>>(...)}. 
+In the code we were given, the kernel functions are called with the mappings like: \code{kernel<<<grid, block>>>(...)}. 
 
 The \code{grid} variable is defined as a 2D grid where each axis corresponds to the number of threads in that "direction", in the x-axis we set the grid to have the same number of threads as the width of the input image, and in the y-axis we set the grid to have the same number of threads as the height of the input image.
 
@@ -56,7 +56,7 @@ When running the program with all the different images it seems to be the case t
 \begin{figure}
     \centering
     \includegraphics[width=0.5\linewidth]{images/shared_memory.png}
-    \caption{Double Precision}
+    \caption{Visual example of copying pixels to shared memory.}
     \label{fig:shared_memory}
 \end{figure}
 
@@ -70,16 +70,16 @@ When running the program with all the different images it seems to be the case t
 % 4. If you are using Tegner or lab computers, the use of managed memory will result in an implicit memory copy before CUDA kernel launch. Why is that?
 \section{Exercise 2}
 % 1
-The difference between pageable memory and pinned memory is essentially if the memory is always loaded or not. The good thing about pinned memory is that it will always be loaded in the physical memory and ready to be used, which removes the delay of needing to move it back to memory if it is not present. But, with pros usually cons come as well and this is no exception. The bad thing about pinned memory is that we unfortunately do not have infinite memory, so when we use pinned memory the available memory decreases - it is a limited resource. That is what pageable memory solves. Pageable memory is not restricted to the size of the memory but can be unloaded and loaded into the physical memory, but at the cost of being slower if the memory asked for is not currently loaded.
+The difference between pageable memory and pinned memory is essentially that the pinned memory is always loaded in physical memory. The good thing about pinned memory is that since it will always be loaded in the physical memory it will always be ready to be used. Which removes the delay of needing to move it back to memory if it is not present. But, with pros usually cons come as well and this is no exception. The bad thing about pinned memory is that we unfortunately do not have infinite memory, so when we use pinned memory the available memory decreases - it is a limited resource. That is what pageable memory solves. Pageable memory is not restricted to the size of the memory but can be unloaded and loaded into the physical memory, but at the cost of being slower if the memory asked for is not currently in physical memory.
 
 % 2
 When changing from pageable memory to pinned memory the execution time for the GPU particle simulation almost got cut in half, which is a $50\%$ increase - that is, really good! When testing this I used a block size of $16$, $1000$ iterations and $100k$ particles.
 
 % 3
-Managed memory is another kind of memory in the cuda api. Managed memory is memory that is accessible by both the GPU and CPU, this works by the memory being copied over from the CPU or the GPU memory automatically - removing work for the programmer, but also abstracting away some of the lower level control that in some cases can be useful as well.
+Managed memory is another kind of memory in the cuda API. Managed memory is memory that is accessible by both the GPU and CPU, this works by the memory being copied over from the CPU or the GPU memory automatically - removing work for the programmer, but also abstracting away some of the lower level control that in some cases can be useful as well.
 
 % 4
-I am not using Tegner nor a lab computer, but I am assuming this could be because the resources are shared - so to not waste the limited space on the GPU the allocated memory will only be present on the GPU when really needed, i.e. when a kernel needs to run. So therefore it will be copied when launching a kernel.
+I am not using Tegner nor a lab computer, but I am assuming that the use of managed memory will implicitly copy the memory before a kernel launch because the resources are shared - so to not waste the limited space on the GPU, the allocated memory will only be present on the GPU when really needed, i.e. when a kernel needs to run. So therefore it will be copied when launching a kernel.
 
 
 % 1. What are the advantages of using CUDA streams and asynchronous memory copies?
@@ -92,8 +92,9 @@ I am not using Tegner nor a lab computer, but I am assuming this could be becaus
 The advantages of using CUDA streams and asynchronous memory copying is that the GPU can perform operations at the same time as it is transferring memory, but so far we have not been utilizing this fact. What we have done is copy the data to the GPU, and when it is finished we have launched our kernel, and then we wait for all threads to finish before copying the data back. What we can do with CUDA streams and async memory copies is we can asynchronously start copying batches of data, and instruct cuda to launch a kernel when the memory is finished copying, and then copy the data back. Since all this is asynchronous we can do this for a number of streams basically in paralell (sequentially on the CPU side but paralell on the GPU). What then happens is that the GPU will start copying part of the full data and then start working on that part while at the same time transferring the next part. So by doing this we can utilize that the GPU can transfer data and perform work at the same time, and we could also perform work on the CPU while the memory is asynchronously transferred back and before trying to access the memory we synchronize the CPU with the GPU to make sure all the streams are done executing.
 
 % 2
-When I implemented the CUDA stream the performance improvement was very big. In my tests the performance improved with approximately $50\%$, which I would consider a great improvement.\\
+When I implemented the CUDA stream the performance improvement was very big. In my tests the performance improved with approximately $50\%$, which I would consider a great improvement.
 
+\newpage
 % 3
 Disclaimer: I was not sure if batch size was meant to be the number of streams or the size of data per stream, in my case I picked that batch size is the size of the data per stream.
 \\\\
@@ -113,7 +114,7 @@ The impact on the performance of the batch size did not change too much in my te
 % 4. Run the program with different input sizes, for example from 64, 128, ... , to 4096. Make a grouped bar plot of the execution times of the different versions (CPU, GPU Global, GPU Shared, GPU cuBLAS). You can plot CPU results in a separate figure if the execution time goes out of the scale comparing to the rest.
 
 % 5. The way the execution time benchmark that is implemented in the code is good enough for this exercise, but in general it is not a good way to do a benchmark. Why?
-\section{Bonus Exercise}
+%\section{Bonus Exercise}
 
 
 
