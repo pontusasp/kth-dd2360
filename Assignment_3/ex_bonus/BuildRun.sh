@@ -1,3 +1,3 @@
 #!/bin/sh
 
-make && ./exercise_bonus.out -s 1024
+make && bin/exercise_bonus.out -s 1024

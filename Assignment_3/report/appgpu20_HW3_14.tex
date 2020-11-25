@@ -109,14 +109,38 @@ The impact on the performance of the batch size did not change too much in my te
 %
 %       2.2. There is a large speedup after switching from using global memory to shared memory, compared to the Edge Detector in Exercise 1. What might be the reason?
 
-% 3. Refer to cublas_sgemm(). We asked that you compute LaTeX: C\:=BAC = B A instead of LaTeX: C=ABC = A B. It has to do with an important property of cuBLAS. What is that, and why do we do LaTeX: C\:=BAC = B A?
+% 3. Refer to cublas_sgemm(). We asked that you compute C=BA instead of C=AB. It has to do with an important property of cuBLAS. What is that, and why do we do C=BA?
+
+\section{Bonus Exercise}
+% 1
+The matrix size has to be a multiple of 16 to make the code a bit more simple. It specifically becomes simpler in the \code{shared\_sgemm\_kernel} function since allocating dynamically sized shared data is more complex than creating statically sized shared data in CUDA. It also makes it easier to partition the matrices since we will always have sub-matrices with the dimensions \code{A\_(m x TILE\_SIZE), B\_(TILE\_SIZE x n)}. If these matrices were not static in one dimension we would not be able to utilize the \code{\#pragma unroll} directive either.
+
+% 2.1
+The \code{\#pragma unroll} directive can potentially improve performance by optimizing away the \code{for-loop} at compile time. Since we can get rid of the loop we can therefore avoid branching which can speed the computation up. This works because the loop is static in how many times it will loop over the data.
+
+% 2.2
+Continuing talking about the \code{shared\_sgemm\_kernel} function, there are two \code{\_\_syncthreads} calls in the loop. They both play an important role to make the code reliable (or even work at all). The first call synchronizes the threads after they copy over the current matrix partition (every thread copies one value from each matrix), since each thread will need to cross-access data that the other threads will copy over as well. They need to access this since each thread will need to access the entire row and column of the matrices B and A when calculating the value for the output matrix C in a specific position.
+The second synchronization happens after the calculation of the value for C, this is because we need to make sure all the threads are finished using the shared data before going over the loop again. Since when we start the loop again we will start overwriting the shared memory, and if some threads are not done using the shared memory yet we will not get the expected result.
+
+% 3
+When calling \code{cublas\_sgemm} we were instructured to compute $C=BA$ instead of $C=AB$. This has to do with the fact that cuBLAS is a port of another library called BLAS. The original BLAS library was written in FORTRAN, which stores multi-dimensional arrays differently than C/C++ does. However cuBLAS could of course change the way this works in the port to C/C++ but they decided to stick to the same order the BLAS library uses for compability reasons. Now, why does this matter to us? Well FORTRAN uses column-major storage while C/C++ uses row-major storage. So if we want to send our matrices to cuBLAS we would have to transpose both of our matrices to make it work, but because of how matrix multiplication works we can instead swap places of the two matrices and it will give us the same effect as transposing them both, this is both easier and faster for us to do, which is why we did it.
 
 % 4. Run the program with different input sizes, for example from 64, 128, ... , to 4096. Make a grouped bar plot of the execution times of the different versions (CPU, GPU Global, GPU Shared, GPU cuBLAS). You can plot CPU results in a separate figure if the execution time goes out of the scale comparing to the rest.
 
 % 5. The way the execution time benchmark that is implemented in the code is good enough for this exercise, but in general it is not a good way to do a benchmark. Why?
-%\section{Bonus Exercise}
 
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\linewidth]{images/blas_graph.png}
+    \caption{Graph of the different calculation times for different matrix sizes.}
+    \label{fig:blas_graph}
+\end{figure}
 
+% 4
+I made a plot of all the different times recorded by running the program with the flag -v, with the sizes varying from 64 up until 4096. The GPU alone had a very steep curve in execution time so I decided to plot the graph with logarithmic time in base 2, since we doubled the matrix sizes with 2 each time - i.e. our X-axis is in base 2 as well. By doing so the CPU time also fit well into the graph. Looking at the graph it now looks linear, but we do see that the bars increase faster in the Y-axis than in the X-axis, so if we would look at this data in linear scales then they would actually be growing exponentially.
+
+% 5
+In general the way the time benchmark is implemented in this exercise is not optimal because it requires some overhead, which gets included in the time measurement. For instance, if we measure the time it takes between copying data to the GPU from the host, then calling the kernel, then synchronizing, and finally copying data back to the CPU - then we will loose some time spent by the CPU as well, so it will look like the GPU was slower than it actually was. In this exercise the time difference should be very small though, so for our purposes of looking how long time the different methods of calculating matrix multiplications takes it is OK, since we are doing it for learning purposes. 
 
 % Write here <--
 

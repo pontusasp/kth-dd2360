@@ -132,7 +132,9 @@ void shared_sgemm_kernel(float *C, float *A, float *B, long size)
 	const long row = blockIdx.y * blockDim.y + threadIdx.y;
 	float val = 0.0;
 
-	/* TODO declare shared memory with size TILE_SIZE x TILE_SIZE */
+    /* TODO declare shared memory with size TILE_SIZE x TILE_SIZE */
+    __shared__ float tile_A[TILE_SIZE][TILE_SIZE];
+    __shared__ float tile_B[TILE_SIZE][TILE_SIZE];
 
 	if (col < size && row < size) {
 		const long local_col = blockIdx.x * TILE_SIZE + threadIdx.x;
@@ -143,9 +145,15 @@ void shared_sgemm_kernel(float *C, float *A, float *B, long size)
 			tile_B[threadIdx.y][threadIdx.x] = B[(m * TILE_SIZE + threadIdx.y) * size + local_col];
 			__syncthreads();
 	
-			/* TODO introduce a pragma directive that can potentially improve performance here */
+            /* TODO introduce a pragma directive that can potentially improve performance here */
+            // this pragma should force the compiler to optimize the for loop into TILE_SIZE amount of statements
+            // instead, to prevent branching to optimize the code. This works since the length of the loop is static.
+            #pragma unroll 
 			for (long k = 0; k < TILE_SIZE; ++k) {
-				/* TODO Perform multiplication here */
+                /* TODO Perform multiplication here */
+                // A (m x TILE_SIZE), B (TILE_SIZE x n), C (m x n)
+                // C_(i,j) += A_(i,k) * B_(k,j)
+                val += tile_A[threadIdx.y][k] * tile_B[k][threadIdx.x];
 			}
 			__syncthreads();
 		}
@@ -178,8 +186,25 @@ void cublas_sgemm(float *C, float *A, float *B, long size)
 	cublasCreate(&handle);
 
 	gettimeofday(&t0, NULL);
-	/* TODO fill in the blanks, do C = BA instead of C = AB */
-	cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, , , , , , , , , , , );
+    /* TODO fill in the blanks, do C = BA instead of C = AB */
+    /*
+    (cublasHandle_t handle,
+                           cublasOperation_t transa, cublasOperation_t transb,
+                           int m, int n, int k,
+                           const float           *alpha,
+                           const float           *A, int lda,
+                           const float           *B, int ldb,
+                           const float           *beta,
+                           float           *C, int ldc)
+    */
+    cublasSgemm(handle,             // library handle
+        CUBLAS_OP_N, CUBLAS_OP_N,   // transa, transb
+        size, size, size,           // m, n, k          A (m x k), B (k x n), C (m x n)
+        &alpha,                     // *alpha (1.0)
+        B, size,                    // *A, lda (Set B as A)
+        A, size,                    // *B, ldb (Set A as B)
+        &beta,                      // *beta (0.0)
+        C, size);                   // *C, ldc
 	checkCudaErrors(cudaDeviceSynchronize());
 	gettimeofday(&t1, NULL);
 	cublasDestroy(handle);
