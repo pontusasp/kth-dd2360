@@ -58,5 +58,5 @@ autolabel(rects4)
 
 fig.tight_layout()
 
-plt.savefig("blasgpu_graph.png")
+plt.savefig("blas_graph.png")
 plt.close()
