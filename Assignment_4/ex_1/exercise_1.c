@@ -10,10 +10,18 @@
 // A errorCode to string converter (forward declaration)
 const char* clGetErrorString(int);
 
-const char *mykernel = ""; //TODO: Write your kernel here
+const char *mykernel = "\
+\
+__kernel\n\
+void helloWorld() {\n\
+  int index = get_global_id(0);\n\
+  printf(\"Hello World! - ThreadID %d\\n\", index);\n\
+}\n\
+\
+"; //TODO: Write your kernel here
 
 
-int main(int argc, char *argv) {
+int main(int argc, char **argv) {
   cl_platform_id * platforms; cl_uint     n_platform;
 
   // Find OpenCL Platforms
@@ -33,8 +41,29 @@ int main(int argc, char *argv) {
   // Create a command queue
   cl_command_queue cmd_queue = clCreateCommandQueue(context, device_list[0], 0, &err);CHK_ERROR(err); 
 
-  /* Insert your own code here */
+  /* =========== Insert your own code here =========== */
+  cl_program program = clCreateProgramWithSource(context, 1,(const char **)&mykernel, NULL, &err); CHK_ERROR(err);
+
+
+  err = clBuildProgram(program, 1, device_list, NULL, NULL, NULL);
+  if (err != CL_SUCCESS) {
+    size_t len;
+    char buffer[2048];
+    clGetProgramBuildInfo(program, device_list[0], CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len); 
+    fprintf(stderr,"Build error: %s\n", buffer); exit(0);
+  }
   
+  cl_kernel kernel = clCreateKernel(program, "helloWorld", &err); CHK_ERROR(err);
+
+  const size_t workItems = 256;
+  const size_t workGroups = 1;
+
+  err = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, NULL, &workItems, &workGroups, 0, NULL, NULL); CHK_ERROR(err);
+
+  err = clFinish(cmd_queue); CHK_ERROR(err);
+
+  /* =============== END ================ */  
+
   // Finally, release all that we have allocated.
   err = clReleaseCommandQueue(cmd_queue);CHK_ERROR(err);
   err = clReleaseContext(context);CHK_ERROR(err);

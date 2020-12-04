@@ -5,5 +5,8 @@ CL_LIBRARIES=OpenCL
 FILES=exercise_1.c
 OUT_FILE=bin/ex_1
 
-main: $(FILES)
+main: $(FILES) | bin
 	g++ $(FILES) -o $(OUT_FILE) -L$(CL_LIBRARY_PATH) -I$(CL_INCLUDE_PATH) -l$(CL_LIBRARIES)
+
+bin:
+	mkdir -p bin
