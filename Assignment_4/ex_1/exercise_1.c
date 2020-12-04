@@ -14,8 +14,9 @@ const char *mykernel = "\
 \
 __kernel\n\
 void helloWorld() {\n\
-  int index = get_global_id(0);\n\
-  printf(\"Hello World! - ThreadID %d\\n\", index);\n\
+  int indexX = get_global_id(0);\n\
+  int indexY = get_global_id(1);\n\
+  printf(\"Hello World! - ThreadID (%d, %d) -> %d\\n\", indexX, indexY, indexX + (indexY * 16));\n\
 }\n\
 \
 "; //TODO: Write your kernel here
@@ -55,10 +56,10 @@ int main(int argc, char **argv) {
   
   cl_kernel kernel = clCreateKernel(program, "helloWorld", &err); CHK_ERROR(err);
 
-  const size_t workItems = 256;
-  const size_t workGroups = 1;
+  const size_t workItems[2] = {16, 16};
+  const size_t workGroups[1] = {1};
 
-  err = clEnqueueNDRangeKernel(cmd_queue, kernel, 1, NULL, &workItems, &workGroups, 0, NULL, NULL); CHK_ERROR(err);
+  err = clEnqueueNDRangeKernel(cmd_queue, kernel, 2, NULL, workItems, workGroups, 0, NULL, NULL); CHK_ERROR(err);
 
   err = clFinish(cmd_queue); CHK_ERROR(err);
 
