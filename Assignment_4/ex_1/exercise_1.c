@@ -16,9 +16,11 @@ __kernel\n\
 void helloWorld() {\n\
   int indexX = get_global_id(0);\n\
   int indexY = get_global_id(1);\n\
+  int indexZ = get_global_id(2);\n\
   int workX = get_group_id(0);\n\
   int workY = get_group_id(1);\n\
-  printf(\"Hello World! - ThreadID (%2d, %2d), (%2d, %2d)\\n\", indexX, indexY, workX, workY);\n\
+  int workZ = get_group_id(2);\n\
+  printf(\"Hello World! - ThreadID (%2d, %2d, %2d), (%2d, %2d, %2d)\\n\", indexX, indexY, indexZ, workX, workY, workZ);\n\
 }\n\
 \
 "; //TODO: Write your kernel here
@@ -58,19 +60,21 @@ int main(int argc, char **argv) {
   
   cl_kernel kernel = clCreateKernel(program, "helloWorld", &err); CHK_ERROR(err);
 
-  const size_t workItems[2] = {16, 16};
-  const size_t workGroups[2] = {4, 4};
+  const size_t workItems[3] = {4, 4, 4}; // Global amount of items
+  const size_t workGroups[3] = {1, 1, 1}; // Items to process in each local group i.e.
+                                          // workItems/workGroups = num of groups in each dimension
+                                          // e.g. 4 / 1 = 4 groups (x * y * z = total)
 
   err = clEnqueueNDRangeKernel(
-    cmd_queue,                    // command_queue
-    kernel,                       // kernel
-    2,                            // work_dim
-    NULL,                         // global_work_offset
-    workItems,                    // global_work_size
-    workGroups,                   // local_work_size
-    0,                            // event
-    NULL,                         // 
-    NULL                          // 
+    cmd_queue,   // command_queue
+    kernel,      // kernel
+    3,           // work_dim
+    NULL,        // global_work_offset
+    workItems,   // global_work_size
+    workGroups,  // local_work_size
+    0,           // num_events_in_wait_list
+    NULL,        // event_wait_list
+    NULL         // event
     ); CHK_ERROR(err);
 
   err = clFinish(cmd_queue); CHK_ERROR(err);
