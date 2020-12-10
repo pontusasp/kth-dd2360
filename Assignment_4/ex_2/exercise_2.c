@@ -5,7 +5,7 @@
 // This is a macro for checking the error variable.
 #define CHK_ERROR(err) if (err != CL_SUCCESS) fprintf(stderr,"Error: %s\n",clGetErrorString(err));
 
-#define VSIZE 64
+#define VSIZE 10000
 
 // A errorCode to string converter (forward declaration)
 const char* clGetErrorString(int);
@@ -16,12 +16,16 @@ const char *kernel_saxpy_src = "\
 __kernel\n\
 void kernel_saxpy(__global float* x, __global float* y, __global float* a) {\n\
     int index = get_global_id(0);\n\
-    int work = get_group_id(0);\n\
 \
-    printf(\"ThreadID Index: %2d, Group: %2d, x: %3f, y: %3f, a: %f\\n\", index, work, x[index], y[index], *a);\n\
+    y[index] = *a * x[index] + y[index];\n\
 }\n\
 \
 ";
+
+void host_saxpy(float* x, float* y, float a) {
+    for (int i = 0; i < VSIZE; i++)
+        y[i] = a * x[i] + y[i];
+}
 
 
 int main(int argc, char **argv) {
@@ -60,12 +64,11 @@ int main(int argc, char **argv) {
 
     /* Initialize host memory/data */
     int array_size = VSIZE * sizeof(float);
-    float x[VSIZE], y[VSIZE], a;
-    a = 1;
+    float x[VSIZE], y[VSIZE], a, res_dev[VSIZE];
+    a = 1.5;
     for (int i = 0; i < VSIZE; i++) {
         x[i] = i / 2.0f;
         y[i] = (VSIZE-i) / 2.0f;
-        printf("x: %3f, y: %3f, a: %f\n", x[i], y[i], a);
     }
 
     /* Allocated device data */
@@ -100,7 +103,26 @@ int main(int argc, char **argv) {
         NULL         // event
     ); CHK_ERROR(err);
 
+    err = clEnqueueReadBuffer(cmd_queue, y_dev, CL_TRUE, 0, array_size, res_dev, 0, NULL, NULL);CHK_ERROR(err);
+
     err = clFinish(cmd_queue); CHK_ERROR(err);
+
+    {
+        host_saxpy(x, y, a);
+        int failed = 0;
+        for (int i = 0; i < VSIZE; i++) {
+            //printf("%f == %f\t?\t%s\n", y[i], res_dev[i], y[i] == res_dev[i]? "TRUE" : "FALSE");
+            if (y[i] != res_dev[i]) {
+                failed++;
+                printf("WARN: Mismatch at %d: Host(%f) != Kernel(%f)!\n", i, y[i], res_dev[i]);
+            }
+        }
+        if (failed) {
+            printf("\n%d mismatches found.\n", failed);
+        } else {
+            printf("Done.\n");
+        }
+    }
 
     /* =============== END ================ */  
 
