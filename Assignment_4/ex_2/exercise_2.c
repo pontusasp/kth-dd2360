@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <CL/cl.h>
+#include <chrono>
 
 // This is a macro for checking the error variable.
 #define CHK_ERROR(err) if (err != CL_SUCCESS) fprintf(stderr,"Error: %s\n",clGetErrorString(err));
@@ -76,6 +77,7 @@ int main(int argc, char **argv) {
     }
 
     printf("Computing SAXPY on the GPU...\n");
+    auto start = std::chrono::system_clock::now();
 
     /* Allocated device data */
     cl_mem x_dev = clCreateBuffer(context, CL_MEM_READ_ONLY, array_size, NULL, &err);CHK_ERROR(err);
@@ -116,11 +118,18 @@ int main(int argc, char **argv) {
     err = clEnqueueReadBuffer(cmd_queue, y_dev, CL_TRUE, 0, array_size, res_dev, 0, NULL, NULL);CHK_ERROR(err);
 
     err = clFinish(cmd_queue); CHK_ERROR(err);
-    printf("\tDone!\n\n");
+
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> dev_time = (end-start) * 1000;
+    printf("\tDone in %f ms!\n\n", dev_time.count());
 
     printf("Computing SAXPY on the CPU...\n");
+    start = std::chrono::system_clock::now();
     host_saxpy(x, y, a);
-    printf("\tDone!\n\n");
+
+    end = std::chrono::system_clock::now();
+    std::chrono::duration<double> host_time = (end-start) * 1000;
+    printf("\tDone in %f ms!\n\n", host_time.count());
     {
         printf("Checking the output for each implementation...\n");
         int failed = 0;
