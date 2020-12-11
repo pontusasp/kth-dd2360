@@ -5,7 +5,8 @@
 // This is a macro for checking the error variable.
 #define CHK_ERROR(err) if (err != CL_SUCCESS) fprintf(stderr,"Error: %s\n",clGetErrorString(err));
 
-#define VSIZE 10000
+#define VSIZE (10000)
+#define BLOCK_SIZE 256
 
 // A errorCode to string converter (forward declaration)
 const char* clGetErrorString(int);
@@ -14,8 +15,10 @@ const char* clGetErrorString(int);
 const char *kernel_saxpy_src = "\
 \
 __kernel\n\
-void kernel_saxpy(__global float* x, __global float* y, __global float* a) {\n\
+void kernel_saxpy(__global float* x, __global float* y, __global float* a, __global int* size) {\n\
     int index = get_global_id(0);\n\
+\
+    if(index >= size) return;\n\
 \
     y[index] = *a * x[index] + y[index];\n\
 }\n\
@@ -65,29 +68,36 @@ int main(int argc, char **argv) {
     /* Initialize host memory/data */
     int array_size = VSIZE * sizeof(float);
     float x[VSIZE], y[VSIZE], a, res_dev[VSIZE];
+    int array_length = VSIZE;
     a = 1.5;
     for (int i = 0; i < VSIZE; i++) {
         x[i] = i / 2.0f;
         y[i] = (VSIZE-i) / 2.0f;
     }
 
+    printf("Computing SAXPY on the GPU...\n");
+
     /* Allocated device data */
     cl_mem x_dev = clCreateBuffer(context, CL_MEM_READ_ONLY, array_size, NULL, &err);CHK_ERROR(err);
     cl_mem y_dev = clCreateBuffer(context, CL_MEM_READ_WRITE, array_size, NULL, &err);CHK_ERROR(err);
     cl_mem a_dev = clCreateBuffer(context, CL_MEM_READ_ONLY,sizeof(float), NULL, &err);CHK_ERROR(err);
+    cl_mem size_dev = clCreateBuffer(context, CL_MEM_READ_ONLY,sizeof(int), NULL, &err);CHK_ERROR(err);
 
     /* Send command to transfer host data to device */
     err = clEnqueueWriteBuffer(cmd_queue, x_dev, CL_TRUE, 0, array_size, x, 0, NULL, NULL);CHK_ERROR(err);
     err = clEnqueueWriteBuffer(cmd_queue, y_dev, CL_TRUE, 0, array_size, y, 0, NULL, NULL);CHK_ERROR(err);
     err = clEnqueueWriteBuffer(cmd_queue, a_dev, CL_TRUE, 0, sizeof(float), &a, 0, NULL, NULL);CHK_ERROR(err);
+    err = clEnqueueWriteBuffer(cmd_queue, size_dev, CL_TRUE, 0, sizeof(int), &array_length, 0, NULL, NULL);CHK_ERROR(err);
 
     /* Set the three kernel arguments */
     err = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *) &x_dev);CHK_ERROR(err);
     err = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *) &y_dev);CHK_ERROR(err);
     err = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *) &a_dev);CHK_ERROR(err);
+    err = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *) &size_dev);CHK_ERROR(err);
 
-    const size_t workItems[3] = {VSIZE}; // Global amount of items
-    const size_t workGroups[3] = {1}; // Items to process in each local group i.e.
+    size_t gridSize = (VSIZE + BLOCK_SIZE - 1) / BLOCK_SIZE; // number of groups 
+    const size_t workItems[1] = {(VSIZE + gridSize - 1) / gridSize * gridSize}; // Global amount of items
+    const size_t workGroups[1] = { gridSize }; // Items to process in each local group i.e.
                                             // workItems/workGroups = num of groups in each dimension
                                             // e.g. 4 / 1 = 4 groups (x * y * z = total)
 
@@ -106,21 +116,28 @@ int main(int argc, char **argv) {
     err = clEnqueueReadBuffer(cmd_queue, y_dev, CL_TRUE, 0, array_size, res_dev, 0, NULL, NULL);CHK_ERROR(err);
 
     err = clFinish(cmd_queue); CHK_ERROR(err);
+    printf("\tDone!\n\n");
 
+    printf("Computing SAXPY on the CPU...\n");
+    host_saxpy(x, y, a);
+    printf("\tDone!\n\n");
     {
-        host_saxpy(x, y, a);
+        printf("Checking the output for each implementation...\n");
         int failed = 0;
+        float l1, l2;
         for (int i = 0; i < VSIZE; i++) {
             //printf("%f == %f\t?\t%s\n", y[i], res_dev[i], y[i] == res_dev[i]? "TRUE" : "FALSE");
             if (y[i] != res_dev[i]) {
                 failed++;
-                printf("WARN: Mismatch at %d: Host(%f) != Kernel(%f)!\n", i, y[i], res_dev[i]);
+                //printf("WARN: Mismatch at %d: Host(%f) != Kernel(%f)\n", i, y[i], res_dev[i]);
+                l1 = y[i];
+                l2 = res_dev[i];
             }
         }
         if (failed) {
-            printf("\n%d mismatches found.\n", failed);
+            printf("\n%d mismatches found. (%2d%% failed)\n", failed, failed * 100 / VSIZE);
         } else {
-            printf("Done.\n");
+            printf("\tDone!\n\n");
         }
     }
 
