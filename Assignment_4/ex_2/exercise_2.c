@@ -68,7 +68,12 @@ int main(int argc, char **argv) {
 
     /* Initialize host memory/data */
     int array_size = VSIZE * sizeof(float);
-    float x[VSIZE], y[VSIZE], a, res_dev[VSIZE];
+    float *x, *y, a, *res_dev;
+
+    x = (float*) malloc(array_size);
+    y = (float*) malloc(array_size);
+    res_dev = (float*) malloc(array_size);
+
     int array_length = VSIZE;
     a = 1.5;
     for (int i = 0; i < VSIZE; i++) {
@@ -160,6 +165,10 @@ int main(int argc, char **argv) {
     err = clReleaseMemObject(a_dev);CHK_ERROR(err);
     free(platforms);
     free(device_list);
+
+    free(x);
+    free(y);
+    free(res_dev);
 
     return 0;
 }
