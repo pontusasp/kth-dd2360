@@ -4,9 +4,9 @@
 #include <chrono>
 
 // This is a macro for checking the error variable.
-#define CHK_ERROR(err) if (err != CL_SUCCESS) fprintf(stderr,"Error: %s\n",clGetErrorString(err));
+#define CHK_ERROR(err) if (err != CL_SUCCESS) fprintf(stderr,"Error (%d): %s\n", __LINE__,clGetErrorString(err));
 
-#define VSIZE (10000)
+#define VSIZE (10000000)
 #define BLOCK_SIZE 256
 
 // A errorCode to string converter (forward declaration)
@@ -102,8 +102,22 @@ int main(int argc, char **argv) {
     err = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *) &a_dev);CHK_ERROR(err);
     err = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *) &size_dev);CHK_ERROR(err);
 
-    size_t gridSize = (VSIZE + BLOCK_SIZE - 1) / BLOCK_SIZE; // number of groups 
-    const size_t workItems[1] = {(VSIZE + gridSize - 1) / gridSize * gridSize}; // Global amount of items
+    size_t block_size = BLOCK_SIZE;
+    size_t gridSize, workSize;
+    bool success = false;
+    while (!success) 
+    {
+        gridSize = (VSIZE + block_size - 1) / block_size; // number of groups 
+        workSize = (VSIZE + gridSize - 1) / gridSize * gridSize;
+
+        if (workSize > 1024 * 1024 * 64 || gridSize > 1024) block_size *= 2; // increase block size in case it is too small
+        else success = true;                                                 // for selected device.
+    }
+
+    if (block_size != BLOCK_SIZE) printf("\tWARN: block size resized from %d to %ld!\n\
+    \tWork size now: %ld, Grid Size: %ld\n", BLOCK_SIZE, block_size, workSize, gridSize);
+
+    const size_t workItems[1] = {workSize}; // Global amount of items
     const size_t workGroups[1] = { gridSize }; // Items to process in each local group i.e.
                                             // workItems/workGroups = num of groups in each dimension
                                             // e.g. 4 / 1 = 4 groups (x * y * z = total)
@@ -149,7 +163,7 @@ int main(int argc, char **argv) {
             }
         }
         if (failed) {
-            printf("\n%d mismatches found. (%2d%% failed)\n", failed, failed * 100 / VSIZE);
+            printf("\tDone! %d mismatches found. (%2d%% failed)\n", failed, failed * 100 / VSIZE);
         } else {
             printf("\tDone!\n\n");
         }
