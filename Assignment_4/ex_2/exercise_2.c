@@ -6,7 +6,7 @@
 // This is a macro for checking the error variable.
 #define CHK_ERROR(err) if (err != CL_SUCCESS) fprintf(stderr,"Error (%d): %s\n", __LINE__,clGetErrorString(err));
 
-#define VSIZE (10000000)
+#define VSIZE (80000000)
 #define BLOCK_SIZE 256
 
 // A errorCode to string converter (forward declaration)
@@ -39,6 +39,15 @@ int main(int argc, char **argv) {
     cl_int err = clGetPlatformIDs(0, NULL, &n_platform); CHK_ERROR(err);
     platforms = (cl_platform_id *) malloc(sizeof(cl_platform_id)*n_platform);
     err = clGetPlatformIDs(n_platform, platforms, NULL); CHK_ERROR(err);
+
+    printf("Number of OpenCL Devices: %d\n", n_platform);
+    for (int i = 0; i < n_platform; i++)
+    {
+        char name[1000];
+        clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, sizeof(char) * 1000, name, NULL);
+        printf("Device %d: %s\n", i, name);
+    }
+    printf("\nUsing Device 0.\n\n");
 
     // Find and sort devices
     cl_device_id *device_list; cl_uint n_devices;
@@ -82,7 +91,7 @@ int main(int argc, char **argv) {
     }
 
     printf("Computing SAXPY on the GPU...\n");
-    auto start = std::chrono::system_clock::now();
+    auto start1 = std::chrono::system_clock::now();
 
     /* Allocated device data */
     cl_mem x_dev = clCreateBuffer(context, CL_MEM_READ_ONLY, array_size, NULL, &err);CHK_ERROR(err);
@@ -101,27 +110,18 @@ int main(int argc, char **argv) {
     err = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *) &y_dev);CHK_ERROR(err);
     err = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *) &a_dev);CHK_ERROR(err);
     err = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *) &size_dev);CHK_ERROR(err);
+    
+    size_t local_work_size = BLOCK_SIZE; // number of items in group 
+    size_t global_work_size = (VSIZE + local_work_size - 1) / local_work_size * local_work_size; 
 
-    size_t block_size = BLOCK_SIZE;
-    size_t gridSize, workSize;
-    bool success = false;
-    while (!success) 
-    {
-        gridSize = (VSIZE + block_size - 1) / block_size; // number of groups 
-        workSize = (VSIZE + gridSize - 1) / gridSize * gridSize;
-
-        if (workSize > 1024 * 1024 * 64 || gridSize > 1024) block_size *= 2; // increase block size in case it is too small
-        else success = true;                                                 // for selected device.
-    }
-
-    if (block_size != BLOCK_SIZE) printf("\tWARN: block size resized from %d to %ld!\n\
-    \tWork size now: %ld, Grid Size: %ld\n", BLOCK_SIZE, block_size, workSize, gridSize);
-
-    const size_t workItems[1] = {workSize}; // Global amount of items
-    const size_t workGroups[1] = { gridSize }; // Items to process in each local group i.e.
+    const size_t workItems[1] = { global_work_size }; // Global amount of items
+    const size_t workGroups[1] = { local_work_size }; // Items to process in each local group i.e.
                                             // workItems/workGroups = num of groups in each dimension
                                             // e.g. 4 / 1 = 4 groups (x * y * z = total)
+    auto end1 = std::chrono::system_clock::now();
+    std::chrono::duration<double> dev_time1 = (end1-start1) * 1000;
 
+    auto start2 = std::chrono::system_clock::now();
     err = clEnqueueNDRangeKernel(
         cmd_queue,   // command_queue
         kernel,      // kernel
@@ -134,30 +134,41 @@ int main(int argc, char **argv) {
         NULL         // event
     ); CHK_ERROR(err);
 
-    err = clEnqueueReadBuffer(cmd_queue, y_dev, CL_TRUE, 0, array_size, res_dev, 0, NULL, NULL);CHK_ERROR(err);
-
     err = clFinish(cmd_queue); CHK_ERROR(err);
 
-    auto end = std::chrono::system_clock::now();
-    std::chrono::duration<double> dev_time = (end-start) * 1000;
-    printf("\tDone in %f ms!\n\n", dev_time.count());
+    auto end2 = std::chrono::system_clock::now();
+    std::chrono::duration<double> dev_time2 = (end2-start2) * 1000;
+
+    auto start3 = std::chrono::system_clock::now();
+
+    err = clEnqueueReadBuffer(cmd_queue, y_dev, CL_TRUE, 0, array_size, res_dev, 0, NULL, NULL);CHK_ERROR(err);
+    err = clFinish(cmd_queue); CHK_ERROR(err);
+
+    auto end3 = std::chrono::system_clock::now();
+    std::chrono::duration<double> dev_time3 = (end3-start3) * 1000;
+
+    printf("\tComputation done in\t%f ms\n\tMemory transfer:\n\t\tTo Device:\t%f ms\n\t\tFrom Device:\t%f ms\n\tTotal time:\t\t%f ms\n\n",
+    dev_time2.count(), dev_time1.count(), dev_time3.count(),
+    dev_time1.count() + dev_time2.count() + dev_time3.count());
+
+
 
     printf("Computing SAXPY on the CPU...\n");
-    start = std::chrono::system_clock::now();
+    start1 = std::chrono::system_clock::now();
     host_saxpy(x, y, a);
 
-    end = std::chrono::system_clock::now();
-    std::chrono::duration<double> host_time = (end-start) * 1000;
-    printf("\tDone in %f ms!\n\n", host_time.count());
+    end1 = std::chrono::system_clock::now();
+    std::chrono::duration<double> host_time = (end1-start1) * 1000;
+    printf("\tComputation done in\t%f ms\n\n", host_time.count());
     {
         printf("Checking the output for each implementation...\n");
         int failed = 0;
         float l1, l2;
         for (int i = 0; i < VSIZE; i++) {
             //printf("%f == %f\t?\t%s\n", y[i], res_dev[i], y[i] == res_dev[i]? "TRUE" : "FALSE");
-            if (y[i] != res_dev[i]) {
+            if (abs(y[i] - res_dev[i]) > VSIZE / 10000000.0) {
                 failed++;
-                //printf("WARN: Mismatch at %d: Host(%f) != Kernel(%f)\n", i, y[i], res_dev[i]);
+                printf("WARN: Mismatch at %d: Host(%f) != Kernel(%f)\n", i, y[i], res_dev[i]);
                 l1 = y[i];
                 l2 = res_dev[i];
             }
