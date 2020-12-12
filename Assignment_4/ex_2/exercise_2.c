@@ -161,12 +161,12 @@ int main(int argc, char **argv) {
     std::chrono::duration<double> host_time = (end1-start1) * 1000;
     printf("\tComputation done in\t%f ms\n\n", host_time.count());
     {
-        printf("Checking the output for each implementation...\n");
+        float margin = VSIZE / 10000000.0;
+        printf("Checking the output for each implementation with margin %f...\n", margin);
         int failed = 0;
         float l1, l2;
         for (int i = 0; i < VSIZE; i++) {
-            //printf("%f == %f\t?\t%s\n", y[i], res_dev[i], y[i] == res_dev[i]? "TRUE" : "FALSE");
-            if (abs(y[i] - res_dev[i]) > VSIZE / 10000000.0) {
+            if (abs(y[i] - res_dev[i]) > margin) {
                 failed++;
                 printf("WARN: Mismatch at %d: Host(%f) != Kernel(%f)\n", i, y[i], res_dev[i]);
                 l1 = y[i];
