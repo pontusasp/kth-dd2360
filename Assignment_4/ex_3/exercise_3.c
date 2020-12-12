@@ -8,8 +8,8 @@
 #define CHK_ERROR(err) if (err != CL_SUCCESS) fprintf(stderr,"Error (%d): %s\n", __LINE__,clGetErrorString(err));
 
 #define BLOCK_SIZE 256
-#define NUM_PARTICLES 10000
-#define NUM_ITERATIONS 100
+#define NUM_PARTICLES 1000000
+#define NUM_ITERATIONS 1000
 
 #define PARTICLE_INIT_SEED 8362
 
@@ -87,8 +87,8 @@ __global int* num_particles, __global int* num_iterations)\n\
 void host_timestep(Particle* p, f4 f, const int num_particles)
 {
     float dt = f.w;
-    for(int k = 0; k < NUM_ITERATIONS; k++) {
-        for(int i = 0; i < num_particles; i++) {
+    for(int i = 0; i < num_particles; i++) {
+        for(int k = 0; k < NUM_ITERATIONS; k++) {
             // Update velocity
             p[i].vel.x = p[i].vel.x + f.x * dt;
             p[i].vel.y = p[i].vel.y + f.y * dt;
@@ -160,14 +160,14 @@ int main(int argc, char **argv) {
         particles[i].pos.y = (float) (rand() % 10);
         particles[i].pos.z = (float) (rand() % 10);
 
-        particles[i].vel.x = (float) (rand() % 10);
-        particles[i].vel.y = (float) (rand() % 10);
-        particles[i].vel.z = (float) (rand() % 10);
+        particles[i].vel.x = (float) 0;
+        particles[i].vel.y = (float) 0;
+        particles[i].vel.z = (float) 0;
     }
 
     f4 forces;
     forces.x = 0.0f;
-    forces.y = 9.82f;
+    forces.y = 0.1f;
     forces.z = 0.0f;
     forces.w = 1.0f;
 
@@ -187,15 +187,15 @@ int main(int argc, char **argv) {
         /* Send command to transfer host data to device */
         err = clEnqueueWriteBuffer(cmd_queue, particles_dev, CL_TRUE, 0, array_size, particles, 0, NULL, NULL);CHK_ERROR(err);
         err = clEnqueueWriteBuffer(cmd_queue, forces_dev, CL_TRUE, 0, sizeof(f4), &forces, 0, NULL, NULL);CHK_ERROR(err);
-        err = clEnqueueWriteBuffer(cmd_queue, num_iter_dev, CL_TRUE, 0, sizeof(int), &num_iterations_dev, 0, NULL, NULL);CHK_ERROR(err);
         err = clEnqueueWriteBuffer(cmd_queue, num_parti_dev, CL_TRUE, 0, sizeof(int), &num_particles_dev, 0, NULL, NULL);CHK_ERROR(err);
+        err = clEnqueueWriteBuffer(cmd_queue, num_iter_dev, CL_TRUE, 0, sizeof(int), &num_iterations_dev, 0, NULL, NULL);CHK_ERROR(err);
     }
 
     /* Set the three kernel arguments */
     err = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *) &particles_dev);CHK_ERROR(err);
     err = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *) &forces_dev);CHK_ERROR(err);
-    err = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *) &num_iter_dev);CHK_ERROR(err);
-    err = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *) &num_parti_dev);CHK_ERROR(err);
+    err = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *) &num_parti_dev);CHK_ERROR(err);
+    err = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *) &num_iter_dev);CHK_ERROR(err);
     
     size_t local_work_size = BLOCK_SIZE; // number of items in group 
     size_t global_work_size = (NUM_PARTICLES + local_work_size - 1) / local_work_size * local_work_size; 
@@ -247,7 +247,7 @@ int main(int argc, char **argv) {
     std::chrono::duration<double> host_time = (end1-start1) * 1000;
     printf("\tComputation done in\t%f ms\n\n", host_time.count());
     {
-        float margin = NUM_PARTICLES / 10000000.0;
+        float margin = NUM_ITERATIONS / 10000000.0;
         printf("Checking the output for each implementation with margin %f...\n", margin);
         int failed = 0;
         for (int i = 0; i < NUM_PARTICLES; i++) {
@@ -263,7 +263,7 @@ int main(int argc, char **argv) {
 
             if (localFail) {
                 failed++;
-                printf("WARN: Mismatch at %d: Host(%f) != Kernel(%f)\n", i, particles[i].pos.x, res_dev[i].pos.x);
+                printf("WARN: Mismatch at %d: Host(%f) != Kernel(%f)\n", i, particles[i].pos.y, res_dev[i].pos.y);
             }
         }
         if (failed) {
