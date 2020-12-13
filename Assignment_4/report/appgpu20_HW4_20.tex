@@ -46,6 +46,36 @@ When running a kernel on OpenCL it is running asynchronously from our code so th
 \section{Exercise 2}
 In this exercise we implemented a SAXPY program in OpenCL, I also implemented the optional time measurements. I solved the issue of \code{ARRAY\_SIZE} (which in my code is called \code{VSIZE}, but I will be calling it \code{ARRAY\_SIZE} here for simplicity) potentially not being a multiple of the block size by first getting how many block sizes could cover the entire array and then multiplying this with the block size again to get a number that is equal to, or larger than the \code{ARRAY\_SIZE} that will be divisible by \code{BLOCK\_SIZE}. Here is the formula: $\frac{ARRAY\_SIZE + BLOCK\_SIZE - 1}{BLOCK\_SIZE} \cdot BLOCK\_SIZE$. Take into account that this works thanks to integer division, which gets rid of all decimals after the first division.
 
+Since the device I use with OpenCL is a GPU, this is what I will the OpenCL device as. When comparing the execution time on the CPU vs the GPU with varying array sizes I found something interesting on this particular exercise. The total performance did not vary much with GPU vs CPU. When looking closer I however found that the reason was that by a large majority the time spent on the GPU was transferring data to and from the device memory. When measuring time a bit more in-depth I could see that the actual kernel execution by far outperformed the CPU execution on big array sizes. On small array sizes the kernel did however not do as well as the CPU, and also considering that the GPU has the penalty of memory transfer it was much slower than the CPU variant on small sizes. On very large arrays the GPU variant did start outperforming the CPU version but to my surprise not by much.
+
+Here is a partial output from one run with an array size of $80 000 000$ (80M) and one run with the size of $10000$ (10k):
+
+\subsection{80M Run:}
+\begin{verbatim}
+Computing SAXPY on the GPU...
+    Computation done in   4.487000 ms
+    Memory transfer:
+        To Device:        55.451000 ms
+        From Device:      87.244000 ms
+    Total time:           147.182000 ms
+
+Computing SAXPY on the CPU...
+    Computation done in   155.476000 ms
+\end{verbatim}
+
+\subsection{10k Run:}
+\begin{verbatim}
+Computing SAXPY on the GPU...
+    Computation done in   0.014000 ms
+    Memory transfer:
+        To Device:        0.121000 ms
+        From Device:      0.022000 ms
+    Total time:           0.157000 ms
+
+Computing SAXPY on the CPU...
+    Computation done in   0.019000 ms
+\end{verbatim}
+
 % 1. Measure the execution time of the CPU version, varying the number of particles.
 %
 % 2. Measure the execution time of the GPU version, varying the number of particles, like in 1).
