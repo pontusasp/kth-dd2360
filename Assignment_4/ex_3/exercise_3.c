@@ -6,10 +6,6 @@
 // This is a macro for checking the error variable.
 #define CHK_ERROR(err) if (err != CL_SUCCESS) fprintf(stderr,"Error (%d): %s\n", __LINE__,clGetErrorString(err));
 
-#define BLOCK_SIZE 256
-#define NUM_PARTICLES 1000000
-#define NUM_ITERATIONS 1000
-
 #define PARTICLE_INIT_SEED 8362
 
 // A errorCode to string converter (forward declaration)
@@ -83,11 +79,11 @@ __global int* num_particles, __global int* num_iterations)\n\
 \n\
 ";
 
-void host_timestep(Particle* p, f4 f, const int num_particles)
+void host_timestep(Particle* p, f4 f, const int num_particles, const int num_iterations)
 {
     float dt = f.w;
     for(int i = 0; i < num_particles; i++) {
-        for(int k = 0; k < NUM_ITERATIONS; k++) {
+        for(int k = 0; k < num_iterations; k++) {
             // Update velocity
             p[i].vel.x = p[i].vel.x + f.x * dt;
             p[i].vel.y = p[i].vel.y + f.y * dt;
@@ -118,6 +114,11 @@ double timerstop() {
 
 
 int main(int argc, char **argv) {
+    if(argc < 4) {
+        printf("Please run as: %s <n_particles> <n_iterations> <block_size> [execution_type (0: both, 1: cpu, 2: gpu)]\n", argv[0]);
+        return 0;
+    }
+
     cl_platform_id * platforms; cl_uint     n_platform;
 
     // Find OpenCL Platforms
@@ -147,6 +148,12 @@ int main(int argc, char **argv) {
     cl_command_queue cmd_queue = clCreateCommandQueue(context, device_list[0], 0, &err);CHK_ERROR(err); 
 
     /* =========== Insert your own code here =========== */
+
+    int num_particles = atoi(argv[1]);
+    int num_iterations = atoi(argv[2]);
+    int block_size = atoi(argv[3]);
+    int execution_type = argc > 4? atoi(argv[4]) : 0;
+
     cl_program program = clCreateProgramWithSource(context, 1,(const char **)&kernel_timestep_src, NULL, &err); CHK_ERROR(err);
 
 
@@ -161,15 +168,14 @@ int main(int argc, char **argv) {
     cl_kernel kernel = clCreateKernel(program, "device_timestep", &err); CHK_ERROR(err);
 
     /* Initialize host memory/data */
-    int array_size = NUM_PARTICLES * sizeof(Particle);
+    int array_size = num_particles * sizeof(Particle);
     Particle *particles, *res_dev;
 
     particles = (Particle*) malloc(array_size);
     res_dev = (Particle*) malloc(array_size);
 
-    int array_length = NUM_PARTICLES;
     srand(PARTICLE_INIT_SEED);
-    for (int i = 0; i < NUM_PARTICLES; i++) {
+    for (int i = 0; i < num_particles; i++) {
         particles[i].pos.x = (float) (rand() % 10);
         particles[i].pos.y = (float) (rand() % 10);
         particles[i].pos.z = (float) (rand() % 10);
@@ -194,16 +200,11 @@ int main(int argc, char **argv) {
     cl_mem num_iter_dev = clCreateBuffer(context, CL_MEM_READ_ONLY,sizeof(int), NULL, &err);CHK_ERROR(err);
     cl_mem num_parti_dev = clCreateBuffer(context, CL_MEM_READ_ONLY,sizeof(int), NULL, &err);CHK_ERROR(err);
 
-    {
-        int num_iterations_dev = NUM_ITERATIONS;
-        int num_particles_dev = NUM_PARTICLES;
-
-        /* Send command to transfer host data to device */
-        err = clEnqueueWriteBuffer(cmd_queue, particles_dev, CL_TRUE, 0, array_size, particles, 0, NULL, NULL);CHK_ERROR(err);
-        err = clEnqueueWriteBuffer(cmd_queue, forces_dev, CL_TRUE, 0, sizeof(f4), &forces, 0, NULL, NULL);CHK_ERROR(err);
-        err = clEnqueueWriteBuffer(cmd_queue, num_parti_dev, CL_TRUE, 0, sizeof(int), &num_particles_dev, 0, NULL, NULL);CHK_ERROR(err);
-        err = clEnqueueWriteBuffer(cmd_queue, num_iter_dev, CL_TRUE, 0, sizeof(int), &num_iterations_dev, 0, NULL, NULL);CHK_ERROR(err);
-    }
+    /* Send command to transfer host data to device */
+    err = clEnqueueWriteBuffer(cmd_queue, particles_dev, CL_TRUE, 0, array_size, particles, 0, NULL, NULL);CHK_ERROR(err);
+    err = clEnqueueWriteBuffer(cmd_queue, forces_dev, CL_TRUE, 0, sizeof(f4), &forces, 0, NULL, NULL);CHK_ERROR(err);
+    err = clEnqueueWriteBuffer(cmd_queue, num_parti_dev, CL_TRUE, 0, sizeof(int), &num_particles, 0, NULL, NULL);CHK_ERROR(err);
+    err = clEnqueueWriteBuffer(cmd_queue, num_iter_dev, CL_TRUE, 0, sizeof(int), &num_iterations, 0, NULL, NULL);CHK_ERROR(err);
 
     /* Set the three kernel arguments */
     err = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *) &particles_dev);CHK_ERROR(err);
@@ -211,8 +212,8 @@ int main(int argc, char **argv) {
     err = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *) &num_parti_dev);CHK_ERROR(err);
     err = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *) &num_iter_dev);CHK_ERROR(err);
     
-    size_t local_work_size = BLOCK_SIZE; // number of items in group 
-    size_t global_work_size = (NUM_PARTICLES + local_work_size - 1) / local_work_size * local_work_size; 
+    size_t local_work_size = block_size; // number of items in group 
+    size_t global_work_size = (num_particles + local_work_size - 1) / local_work_size * local_work_size; 
 
     const size_t workItems[1] = { global_work_size }; // Global amount of items
     const size_t workGroups[1] = { local_work_size }; // Items to process in each local group i.e.
@@ -252,15 +253,15 @@ int main(int argc, char **argv) {
 
     printf("Computing simulation on the CPU...\n");
     timerstart();
-    host_timestep(particles, forces, NUM_PARTICLES);
+    host_timestep(particles, forces, num_particles, num_iterations);
 
     double host_time = timerstop();
     printf("\tComputation done in\t%f ms\n\n", host_time);
     {
-        float margin = NUM_ITERATIONS / 10000000.0;
+        float margin = num_iterations / 10000000.0;
         printf("Checking the output for each implementation with margin %f...\n", margin);
         int failed = 0;
-        for (int i = 0; i < NUM_PARTICLES; i++) {
+        for (int i = 0; i < num_particles; i++) {
             int localFail = 0;
 
             localFail += abs(particles[i].pos.x - res_dev[i].pos.x) > margin;
@@ -277,7 +278,7 @@ int main(int argc, char **argv) {
             }
         }
         if (failed) {
-            printf("\tDone! %d mismatches found. (%2d%% failed)\n", failed, failed * 100 / NUM_PARTICLES);
+            printf("\tDone! %d mismatches found. (%2d%% failed)\n", failed, failed * 100 / num_particles);
         } else {
             printf("\tDone!\n\n");
         }
