@@ -44,6 +44,7 @@ When running a kernel on OpenCL it is running asynchronously from our code so th
 
 % Explain how you solved the issue when the ARRAY_SIZE is not a multiple of the block size. If you implemented timing in the code, vary ARRAY_SIZE from small to large, and explain how the execution time changes between GPU and CPU.
 \section{Exercise 2}
+In this exercise we implemented a SAXPY program in OpenCL, I also implemented the optional time measurements. I solved the issue of \code{ARRAY\_SIZE} (which in my code is called \code{VSIZE}, but I will be calling it \code{ARRAY\_SIZE} here for simplicity) potentially not being a multiple of the block size by first getting how many block sizes could cover the entire array and then multiplying this with the block size again to get a number that is equal to, or larger than the \code{ARRAY\_SIZE} that will be divisible by \code{BLOCK\_SIZE}. Here is the formula: $\frac{ARRAY\_SIZE + BLOCK\_SIZE - 1}{BLOCK\_SIZE} \cdot BLOCK\_SIZE$. Take into account that this works thanks to integer division, which gets rid of all decimals after the first division.
 
 % 1. Measure the execution time of the CPU version, varying the number of particles.
 %
