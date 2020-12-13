@@ -110,9 +110,15 @@ In the bonus exercise, exercise 3, we implemented a particle simulation similar 
 
 If the particle simulation had CPU dependent functions and we needed to transfer the data back and forth between simulations the graphs would drastically change. Since transferring memory is a huge delay when doing small calculations in the version we made the transfer would also grow with the number of simulations which it currently does not do. Right now I am doing 10000 timesteps, which would need 10000 data transfers which would slow down the OpenCL implementation a lot. So I do not think the previous observations would hold at all if this was the case. 
 
+\newpage
 % WRITE STANDALONE FILE FIRST
 \section{Exercise 4}
+I pasted my exercise here as well since I was not sure if it should have been in its own file or not, if the separate file is needed it can be downloaded from the git repository in the ex\_4 folder. Here is a direct link: \url{https://github.com/pontusasp/kth-dd2360/blob/master/Assignment_4/ex_4/exercise_4.pdf}
 % WRITE STANDALONE FILE FIRST
+\subsection{Thoughts on OpenCL compared to CUDA}
+When getting started with OpenCL it is easy to be overwhelmed by the amount of boilerplate code that needs to be written, and what function calls are needed for the setup etc. It is simply a steep learning curve to learn about for instance what contexts and command queues are, or about what the differences between devices and platforms, programs and kernels are. However the fact that OpenCL is so general and works on so many platforms is a very strong argument to using it. CUDA on the other hand, only works on Nvidia GPUs, and this could be both a good, and a bad thing. In my opinion, CUDA is much easier to get into, with less to remember than OpenCL, and with less boilerplate code. CUDA is also made specifically for GPUs, which is what makes it able to be a bit more simple than OpenCL since it has to take less platforms into account. With all this in mind, I do prefer using CUDA, but will probably use OpenCL since it works on more platforms.
+
+Another thing to also consider is the performance differences between CUDA and OpenCL. Of course, CUDA should be faster on a Nvidia GPU since it is Nvidia's own API to their drivers but the question is - in reality, does it make a difference? I tested this by running the two particle simulations we created since I made them both equivalent on the CUDA and OpenCL implementation. My results actually surprised me. The OpenCL performed better than my CUDA variant when using more iterations and particles. But on fewer elements and iterations my CUDA implementation took the lead. I think the CUDA variant however has more room for optimization and if done properly could beat OpenCL at the higher amounts of particles and iterations. 
 
 % Write here <--
 
