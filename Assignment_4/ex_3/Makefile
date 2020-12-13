@@ -6,7 +6,7 @@ FILES=exercise_3.c
 OUT_FILE=bin/ex_3
 
 main: $(FILES) | bin
-	g++ $(FILES) -o $(OUT_FILE) -L$(CL_LIBRARY_PATH) -I$(CL_INCLUDE_PATH) -l$(CL_LIBRARIES)
+	gcc $(FILES) -o $(OUT_FILE) -L$(CL_LIBRARY_PATH) -I$(CL_INCLUDE_PATH) -l$(CL_LIBRARIES)
 
 bin:
 	mkdir -p bin

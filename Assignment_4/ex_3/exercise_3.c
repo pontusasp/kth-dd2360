@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <CL/cl.h>
-#include <chrono>
 #include <time.h>
 
 // This is a macro for checking the error variable.
