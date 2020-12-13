@@ -265,7 +265,7 @@ int main(int argc, char **argv) {
             dev_time2, dev_time1, dev_time3,
             dev_time1 + dev_time2 + dev_time3);
         else
-            printf("%f %f %f %f\n", dev_time2, dev_time1, dev_time3, dev_time1 + dev_time2 + dev_time3);
+            printf("%f, %f, %f, %f\n", dev_time2, dev_time1, dev_time3, dev_time1 + dev_time2 + dev_time3);
 
     }
 
