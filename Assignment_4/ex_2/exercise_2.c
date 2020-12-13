@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <CL/cl.h>
-#include <chrono>
+#include <time.h>
 
 // This is a macro for checking the error variable.
 #define CHK_ERROR(err) if (err != CL_SUCCESS) fprintf(stderr,"Error (%d): %s\n", __LINE__,clGetErrorString(err));
@@ -29,6 +29,21 @@ void kernel_saxpy(__global float* x, __global float* y, __global float* a, __glo
 void host_saxpy(float* x, float* y, float a) {
     for (int i = 0; i < VSIZE; i++)
         y[i] = a * x[i] + y[i];
+}
+
+clock_t* timer = NULL;
+void timerstart() {
+    if(timer) free(timer);
+    timer = (clock_t*) malloc(sizeof(clock_t));
+    *timer = clock();
+}
+
+double timerstop() {
+    if(!timer) return 0.0f;
+    clock_t time = *timer;
+    free(timer);
+    timer = NULL;
+    return ((double) (clock() - time)) / CLOCKS_PER_SEC * 1000.0;
 }
 
 
@@ -91,7 +106,7 @@ int main(int argc, char **argv) {
     }
 
     printf("Computing SAXPY on the GPU...\n");
-    auto start1 = std::chrono::system_clock::now();
+    timerstart();
 
     /* Allocated device data */
     cl_mem x_dev = clCreateBuffer(context, CL_MEM_READ_ONLY, array_size, NULL, &err);CHK_ERROR(err);
@@ -118,10 +133,9 @@ int main(int argc, char **argv) {
     const size_t workGroups[1] = { local_work_size }; // Items to process in each local group i.e.
                                             // workItems/workGroups = num of groups in each dimension
                                             // e.g. 4 / 1 = 4 groups (x * y * z = total)
-    auto end1 = std::chrono::system_clock::now();
-    std::chrono::duration<double> dev_time1 = (end1-start1) * 1000;
+    double dev_time1 = timerstop();
 
-    auto start2 = std::chrono::system_clock::now();
+    timerstart();
     err = clEnqueueNDRangeKernel(
         cmd_queue,   // command_queue
         kernel,      // kernel
@@ -136,30 +150,27 @@ int main(int argc, char **argv) {
 
     err = clFinish(cmd_queue); CHK_ERROR(err);
 
-    auto end2 = std::chrono::system_clock::now();
-    std::chrono::duration<double> dev_time2 = (end2-start2) * 1000;
+    double dev_time2 = timerstop();
 
-    auto start3 = std::chrono::system_clock::now();
+    timerstart();
 
     err = clEnqueueReadBuffer(cmd_queue, y_dev, CL_TRUE, 0, array_size, res_dev, 0, NULL, NULL);CHK_ERROR(err);
     err = clFinish(cmd_queue); CHK_ERROR(err);
 
-    auto end3 = std::chrono::system_clock::now();
-    std::chrono::duration<double> dev_time3 = (end3-start3) * 1000;
+    double dev_time3 = timerstop();
 
     printf("\tComputation done in\t%f ms\n\tMemory transfer:\n\t\tTo Device:\t%f ms\n\t\tFrom Device:\t%f ms\n\tTotal time:\t\t%f ms\n\n",
-    dev_time2.count(), dev_time1.count(), dev_time3.count(),
-    dev_time1.count() + dev_time2.count() + dev_time3.count());
+    dev_time2, dev_time1, dev_time3,
+    dev_time1 + dev_time2 + dev_time3);
 
 
 
     printf("Computing SAXPY on the CPU...\n");
-    start1 = std::chrono::system_clock::now();
+    timerstart();
     host_saxpy(x, y, a);
 
-    end1 = std::chrono::system_clock::now();
-    std::chrono::duration<double> host_time = (end1-start1) * 1000;
-    printf("\tComputation done in\t%f ms\n\n", host_time.count());
+    double host_time = timerstop();
+    printf("\tComputation done in\t%f ms\n\n", host_time);
     {
         float margin = VSIZE / 10000000.0;
         printf("Checking the output for each implementation with margin %f...\n", margin);
