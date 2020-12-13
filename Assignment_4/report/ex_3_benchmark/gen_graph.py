@@ -31,7 +31,7 @@ def readCpu(filename, convert=True):
     return cpu
 
 bl_sizes = ["16", "32", "64", "128", "256"]
-pa_sizes = ["100", "1000", "10000", "100000", "1000000"]
+pa_sizes = ["10", "100", "1000", "10000", "100000"]
 
 gpu_16 = readGpu("gpu_16.dat")
 gpu_32 = readGpu("gpu_32.dat")
@@ -51,12 +51,12 @@ for i in range(0, len(bl_sizes)):
     plt.plot(pa_sizes, gpu[i][3], label = "GPU, block size " + bl_sizes[i])
 
 # Add some text for labels, title and custom x-axis tick labels, etc.
-ax.set_ylabel('Time (ms)')
-ax.set_xlabel('Number of Particles')
+ax.set_ylabel('Time (ms) (Log scale)')
+ax.set_xlabel('Number of Particles (Log scale)')
 ax.set_title('Time measurements GPU')
 ax.set_xticks(pa_sizes)
 ax.set_xticklabels(labels)
-#ax.set_yscale('log', base=10)
+ax.set_yscale('log', base=10)
 plt.grid()
 ax.legend()
 
