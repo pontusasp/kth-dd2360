@@ -8,6 +8,11 @@
 
 #define PARTICLE_INIT_SEED 8362
 
+#define BENCH_TYPE_NONE 0
+#define BENCH_TYPE_BOTH 1
+#define BENCH_TYPE_CPU 2
+#define BENCH_TYPE_GPU 3
+
 // A errorCode to string converter (forward declaration)
 const char* clGetErrorString(int);
 
@@ -115,7 +120,7 @@ double timerstop() {
 
 int main(int argc, char **argv) {
     if(argc < 4) {
-        printf("Please run as: %s <n_particles> <n_iterations> <block_size> [execution_type (0: both, 1: cpu, 2: gpu)]\n", argv[0]);
+        printf("Please run as: %s <n_particles> <n_iterations> <block_size> [bench_type (0: none, 1: both, 2: cpu, 3: gpu)]\n", argv[0]);
         return 0;
     }
 
@@ -125,15 +130,6 @@ int main(int argc, char **argv) {
     cl_int err = clGetPlatformIDs(0, NULL, &n_platform); CHK_ERROR(err);
     platforms = (cl_platform_id *) malloc(sizeof(cl_platform_id)*n_platform);
     err = clGetPlatformIDs(n_platform, platforms, NULL); CHK_ERROR(err);
-
-    printf("Number of OpenCL Devices: %d\n", n_platform);
-    for (int i = 0; i < n_platform; i++)
-    {
-        char name[1000];
-        clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, sizeof(char) * 1000, name, NULL);
-        printf("Device %d: %s\n", i, name);
-    }
-    printf("\nUsing Device 0.\n\n");
 
     // Find and sort devices
     cl_device_id *device_list; cl_uint n_devices;
@@ -152,7 +148,19 @@ int main(int argc, char **argv) {
     int num_particles = atoi(argv[1]);
     int num_iterations = atoi(argv[2]);
     int block_size = atoi(argv[3]);
-    int execution_type = argc > 4? atoi(argv[4]) : 0;
+    int bench_type = argc > 4? atoi(argv[4]) : BENCH_TYPE_NONE;
+    if (bench_type < BENCH_TYPE_NONE || bench_type > BENCH_TYPE_GPU) bench_type = BENCH_TYPE_NONE;
+
+    if(!bench_type) {
+        printf("Number of OpenCL Devices: %d\n", n_platform);
+        for (int i = 0; i < n_platform; i++)
+        {
+            char name[1000];
+            clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, sizeof(char) * 1000, name, NULL);
+            printf("Device %d: %s\n", i, name);
+        }
+        printf("\nUsing Device 0.\n\n");
+    }
 
     cl_program program = clCreateProgramWithSource(context, 1,(const char **)&kernel_timestep_src, NULL, &err); CHK_ERROR(err);
 
@@ -191,75 +199,96 @@ int main(int argc, char **argv) {
     forces.z = 0.0f;
     forces.w = 1.0f;
 
-    printf("Computing simulation on the GPU...\n");
-    timerstart();
+    cl_mem particles_dev;
+    cl_mem forces_dev;
+    cl_mem num_iter_dev;
+    cl_mem num_parti_dev;
 
-    /* Allocated device data */
-    cl_mem particles_dev = clCreateBuffer(context, CL_MEM_READ_WRITE, array_size, NULL, &err);CHK_ERROR(err);
-    cl_mem forces_dev = clCreateBuffer(context, CL_MEM_READ_ONLY,sizeof(f4), NULL, &err);CHK_ERROR(err);
-    cl_mem num_iter_dev = clCreateBuffer(context, CL_MEM_READ_ONLY,sizeof(int), NULL, &err);CHK_ERROR(err);
-    cl_mem num_parti_dev = clCreateBuffer(context, CL_MEM_READ_ONLY,sizeof(int), NULL, &err);CHK_ERROR(err);
+    if (bench_type != BENCH_TYPE_CPU) {
+        if(!bench_type)
+            printf("Computing simulation on the GPU...\n");
+        timerstart();
 
-    /* Send command to transfer host data to device */
-    err = clEnqueueWriteBuffer(cmd_queue, particles_dev, CL_TRUE, 0, array_size, particles, 0, NULL, NULL);CHK_ERROR(err);
-    err = clEnqueueWriteBuffer(cmd_queue, forces_dev, CL_TRUE, 0, sizeof(f4), &forces, 0, NULL, NULL);CHK_ERROR(err);
-    err = clEnqueueWriteBuffer(cmd_queue, num_parti_dev, CL_TRUE, 0, sizeof(int), &num_particles, 0, NULL, NULL);CHK_ERROR(err);
-    err = clEnqueueWriteBuffer(cmd_queue, num_iter_dev, CL_TRUE, 0, sizeof(int), &num_iterations, 0, NULL, NULL);CHK_ERROR(err);
+        /* Allocated device data */
+        particles_dev = clCreateBuffer(context, CL_MEM_READ_WRITE, array_size, NULL, &err);CHK_ERROR(err);
+        forces_dev = clCreateBuffer(context, CL_MEM_READ_ONLY,sizeof(f4), NULL, &err);CHK_ERROR(err);
+        num_iter_dev = clCreateBuffer(context, CL_MEM_READ_ONLY,sizeof(int), NULL, &err);CHK_ERROR(err);
+        num_parti_dev = clCreateBuffer(context, CL_MEM_READ_ONLY,sizeof(int), NULL, &err);CHK_ERROR(err);
 
-    /* Set the three kernel arguments */
-    err = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *) &particles_dev);CHK_ERROR(err);
-    err = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *) &forces_dev);CHK_ERROR(err);
-    err = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *) &num_parti_dev);CHK_ERROR(err);
-    err = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *) &num_iter_dev);CHK_ERROR(err);
-    
-    size_t local_work_size = block_size; // number of items in group 
-    size_t global_work_size = (num_particles + local_work_size - 1) / local_work_size * local_work_size; 
+        /* Send command to transfer host data to device */
+        err = clEnqueueWriteBuffer(cmd_queue, particles_dev, CL_TRUE, 0, array_size, particles, 0, NULL, NULL);CHK_ERROR(err);
+        err = clEnqueueWriteBuffer(cmd_queue, forces_dev, CL_TRUE, 0, sizeof(f4), &forces, 0, NULL, NULL);CHK_ERROR(err);
+        err = clEnqueueWriteBuffer(cmd_queue, num_parti_dev, CL_TRUE, 0, sizeof(int), &num_particles, 0, NULL, NULL);CHK_ERROR(err);
+        err = clEnqueueWriteBuffer(cmd_queue, num_iter_dev, CL_TRUE, 0, sizeof(int), &num_iterations, 0, NULL, NULL);CHK_ERROR(err);
 
-    const size_t workItems[1] = { global_work_size }; // Global amount of items
-    const size_t workGroups[1] = { local_work_size }; // Items to process in each local group i.e.
-                                            // workItems/workGroups = num of groups in each dimension
-                                            // e.g. 4 / 1 = 4 groups (x * y * z = total)
-    double dev_time1 = timerstop();
+        /* Set the three kernel arguments */
+        err = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *) &particles_dev);CHK_ERROR(err);
+        err = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *) &forces_dev);CHK_ERROR(err);
+        err = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *) &num_parti_dev);CHK_ERROR(err);
+        err = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *) &num_iter_dev);CHK_ERROR(err);
+        
+        size_t local_work_size = block_size; // number of items in group 
+        size_t global_work_size = (num_particles + local_work_size - 1) / local_work_size * local_work_size; 
 
-    timerstart();
-    err = clEnqueueNDRangeKernel(
-        cmd_queue,   // command_queue
-        kernel,      // kernel
-        1,           // work_dim
-        NULL,        // global_work_offset
-        workItems,   // global_work_size
-        workGroups,  // local_work_size
-        0,           // num_events_in_wait_list
-        NULL,        // event_wait_list
-        NULL         // event
-    ); CHK_ERROR(err);
+        const size_t workItems[1] = { global_work_size }; // Global amount of items
+        const size_t workGroups[1] = { local_work_size }; // Items to process in each local group i.e.
+                                                // workItems/workGroups = num of groups in each dimension
+                                                // e.g. 4 / 1 = 4 groups (x * y * z = total)
+        double dev_time1 = timerstop();
 
-    err = clFinish(cmd_queue); CHK_ERROR(err);
+        timerstart();
+        err = clEnqueueNDRangeKernel(
+            cmd_queue,   // command_queue
+            kernel,      // kernel
+            1,           // work_dim
+            NULL,        // global_work_offset
+            workItems,   // global_work_size
+            workGroups,  // local_work_size
+            0,           // num_events_in_wait_list
+            NULL,        // event_wait_list
+            NULL         // event
+        ); CHK_ERROR(err);
 
-    double dev_time2 = timerstop();
+        err = clFinish(cmd_queue); CHK_ERROR(err);
 
-    timerstart();
+        double dev_time2 = timerstop();
 
-    err = clEnqueueReadBuffer(cmd_queue, particles_dev, CL_TRUE, 0, array_size, res_dev, 0, NULL, NULL);CHK_ERROR(err);
-    err = clFinish(cmd_queue); CHK_ERROR(err);
+        timerstart();
 
-    double dev_time3 = timerstop();
+        err = clEnqueueReadBuffer(cmd_queue, particles_dev, CL_TRUE, 0, array_size, res_dev, 0, NULL, NULL);CHK_ERROR(err);
+        err = clFinish(cmd_queue); CHK_ERROR(err);
 
-    printf("\tComputation done in\t%f ms\n\tMemory transfer:\n\t\tTo Device:\t%f ms\n\t\tFrom Device:\t%f ms\n\tTotal time:\t\t%f ms\n\n",
-    dev_time2, dev_time1, dev_time3,
-    dev_time1 + dev_time2 + dev_time3);
+        double dev_time3 = timerstop();
+
+        if(!bench_type)
+            printf("\tComputation done in\t%f ms\n\tMemory transfer:\n\t\tTo Device:\t%f ms\n\t\tFrom Device:\t%f ms\n\tTotal time:\t\t%f ms\n\n",
+            dev_time2, dev_time1, dev_time3,
+            dev_time1 + dev_time2 + dev_time3);
+        else
+            printf("%f %f %f %f\n", dev_time2, dev_time1, dev_time3, dev_time1 + dev_time2 + dev_time3);
+
+    }
 
 
+    if (bench_type != BENCH_TYPE_GPU) {
 
-    printf("Computing simulation on the CPU...\n");
-    timerstart();
-    host_timestep(particles, forces, num_particles, num_iterations);
+        if(!bench_type)
+            printf("Computing simulation on the CPU...\n");
+        timerstart();
+        host_timestep(particles, forces, num_particles, num_iterations);
 
-    double host_time = timerstop();
-    printf("\tComputation done in\t%f ms\n\n", host_time);
-    {
+        double host_time = timerstop();
+
+        if(!bench_type)
+            printf("\tComputation done in\t%f ms\n\n", host_time);
+        else
+            printf("%f\n", host_time);
+    }
+
+    if (!bench_type || bench_type == BENCH_TYPE_BOTH){
         float margin = num_iterations / 10000000.0;
-        printf("Checking the output for each implementation with margin %f...\n", margin);
+        if(!bench_type)
+            printf("Checking the output for each implementation with margin %f...\n", margin);
         int failed = 0;
         for (int i = 0; i < num_particles; i++) {
             int localFail = 0;
@@ -274,13 +303,16 @@ int main(int argc, char **argv) {
 
             if (localFail) {
                 failed++;
-                printf("WARN: Mismatch at %d: Host(%f) != Kernel(%f)\n", i, particles[i].pos.y, res_dev[i].pos.y);
+                if(!bench_type)
+                    printf("WARN: Mismatch at %d: Host(%f) != Kernel(%f)\n", i, particles[i].pos.y, res_dev[i].pos.y);
             }
         }
-        if (failed) {
+        if (failed && !bench_type) {
             printf("\tDone! %d mismatches found. (%2d%% failed)\n", failed, failed * 100 / num_particles);
-        } else {
+        } else if(!bench_type) {
             printf("\tDone!\n\n");
+        } else if (failed) {
+            printf("WARN: %2d%% FAILED!\n", failed * 100 / num_particles);
         }
     }
 
@@ -290,10 +322,12 @@ int main(int argc, char **argv) {
     err = clReleaseCommandQueue(cmd_queue);CHK_ERROR(err);
     err = clReleaseContext(context);CHK_ERROR(err);
 
-    err = clReleaseMemObject(particles_dev);CHK_ERROR(err);
-    err = clReleaseMemObject(forces_dev);CHK_ERROR(err);
-    err = clReleaseMemObject(num_iter_dev);CHK_ERROR(err);
-    err = clReleaseMemObject(num_parti_dev);CHK_ERROR(err);
+    if (bench_type != BENCH_TYPE_CPU) {
+        err = clReleaseMemObject(particles_dev);CHK_ERROR(err);
+        err = clReleaseMemObject(forces_dev);CHK_ERROR(err);
+        err = clReleaseMemObject(num_iter_dev);CHK_ERROR(err);
+        err = clReleaseMemObject(num_parti_dev);CHK_ERROR(err);
+    }
     free(platforms);
     free(device_list);
 
