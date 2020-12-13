@@ -84,12 +84,31 @@ Computing SAXPY on the CPU...
 %
 % 3. Generate one or more performance figures based on your measurements in 1 and 2. Include it in the report with a description of the experimental setup (e.g., GPU used) and the observations obtained from the results. Explain how the execution time of the two version changes when the number of particles increases. Which block size configuration is optimal?
 %
+\section{Bonus Exercise 3}
+\begin{figure}
+    \centering
+    \begin{subfigure}{.8\textwidth}
+        \centering
+        \includegraphics[width=1\linewidth]{ex_3_benchmark/ex_3.png}
+        \caption{Benchmark GPU \& CPU}
+        \label{fig:bench_3_both}
+    \end{subfigure}
+  \begin{subfigure}{.8\textwidth}
+    \centering
+    \includegraphics[width=1\linewidth]{ex_3_benchmark/ex_3_gpu.png}
+    \caption{Benchmark only GPU}
+    \label{fig:bench_3_gpu}
+\end{subfigure}
+\caption{Graphs showcasing the time measurements of a simulation with 10000 timesteps with varying block size, particles and GPU vs CPU. Benchmark done in Ubuntu 20.04 using a Nvidia GeForce GTX 1070 and an Intel(R) Core(TM) i7-9700K CPU @ 3.60GHz.}
+\label{fig:bench_3}
+\end{figure}
+% 3. Describe the observations obtained from the results. Explain how the execution time of the two version changes when the number of particles increases. Which block size configuration is optimal?
+%
 % 4. Currently, the particle mover is completely offloaded to the GPU, only with data transfer at the beginning and end of the simulation. If the simulation involves CPU dependent functions (i.e. particles need to be copied back and forth every time step), would your observation in 3) still holds? How would you expect the performance will change in terms of GPU execution? Make an educated guess by timing your kernels.
 %
-% Important note: If the execution times between the CPU and the GPU are very similar, try to increase the number of particles and the number of iterations per simulation even further.
-%
-\section{Bonus Exercise}
+In the bonus exercise, exercise 3, we implemented a particle simulation similar to what we have done previously. The difference this time is that we implemented it using OpenCL instead of CUDA. I did some benchmarks which you can see in \f{bench_3}. From the results you can see that the CPU implementation was more efficient for very low amounts of particles but was overtaken by the OpenCL implementation at around 90 particles. The CPU implementations graph was pretty much just a straight line which is what I expected since the only measurement done on the CPU is on the actual computation, and the computation is growing linearly with the amount of particles. In the OpenCL implementation we can see that it starts off at a higher value on the lower end than the CPU implementation. This is mainly because of the delay when we transfer data to the GPU. Continuing we can see that until around 1000 particles the graph is barely growing, I suspect this has to do something with that my GPU has a max work group size of 1024. Of course, we are not actually using this big of a group size but I have a hypothesis that this might be the max number of work items (threads) that can be launched at once on my GPU, so after this point the rest of the particles are in a queue to be simulated. So therefore the graph changes after this point but is still faster than my CPU. Looking closely at the graph of the GPU measurements in \f{bench_3_gpu} having a block size of 16 is the most efficient at a low amount of particles, but at a higher amount of particles a block size of 32 seems to be more optimal. So I would actually say that having a block size of 32 is better in this scenario if the trend keeps going as we do longer simulations.
 
+If the particle simulation had CPU dependent functions and we needed to transfer the data back and forth between simulations the graphs would drastically change. Since transferring memory is a huge delay when doing small calculations in the version we made the transfer would also grow with the number of simulations which it currently does not do. Right now I am doing 10000 timesteps, which would need 10000 data transfers which would slow down the OpenCL implementation a lot. So I do not think the previous observations would hold at all if this was the case. 
 
 % WRITE STANDALONE FILE FIRST
 \section{Exercise 4}
