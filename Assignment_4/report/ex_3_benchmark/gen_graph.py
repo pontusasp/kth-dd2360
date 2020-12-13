@@ -57,6 +57,7 @@ ax.set_title('Time measurements GPU')
 ax.set_xticks(pa_sizes)
 ax.set_xticklabels(labels)
 #ax.set_yscale('log', base=10)
+plt.grid()
 ax.legend()
 
 
