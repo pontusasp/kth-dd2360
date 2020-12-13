@@ -26,7 +26,7 @@ void helloWorld() {\n\
 "; //TODO: Write your kernel here
 
 
-int main(int argc, char **argv) {
+int main(int argc, char *argv) {
   cl_platform_id * platforms; cl_uint     n_platform;
 
   // Find OpenCL Platforms
